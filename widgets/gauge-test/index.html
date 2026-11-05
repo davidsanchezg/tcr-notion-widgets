@@ -57,6 +57,10 @@
 :root,:root[data-theme="light"]{--bg:#ffffff;--card:#f7f6f3;--line:#e9e9e7;--track:#ecebea;--ink:#37352f;--muted:#787774;color-scheme:light}
 :root[data-theme="dark"]{--bg:#191919;--card:#202020;--line:#373737;--track:#2f2f2f;--ink:#e6e6e6;--muted:#9b9b9b;color-scheme:dark}
 /* theme-tokens:end */
+/* page-tokens:start */
+:root,:root[data-theme="light"]{--tick:#d3d1cb}
+:root[data-theme="dark"]{--tick:#4a4a4a}
+/* page-tokens:end */
   html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
   #root{width:100%;height:100%;display:grid;place-items:center}
   .wrap{position:relative;width:min(78vmin,340px);aspect-ratio:1.2/1}
@@ -91,7 +95,7 @@
   const t0=performance.now();
   function ease(t){return 1-Math.pow(1-t,3)}
   function draw(v){
-    const TRACK=tok('--track'), INK=tok('--ink'), MUTED=tok('--muted');
+    const TRACK=tok('--track'), INK=tok('--ink'), TICK=tok('--tick');
     const w=canvas.clientWidth,h=canvas.clientHeight;
     ctx.clearRect(0,0,w,h);
     const cx=w/2, cy=h*0.78, R=Math.min(w,h)*0.55;
@@ -104,16 +108,14 @@
     ctx.beginPath(); ctx.arc(cx,cy,R,start,a,false);
     ctx.strokeStyle=color; ctx.stroke();
     // ticks
-    ctx.globalAlpha=0.45;
     for(let i=0;i<=10;i++){
       const t=i/10, ang=start+span*t;
       const r0=R-ctx.lineWidth*0.85, r1=R-ctx.lineWidth*1.35;
       ctx.beginPath();
       ctx.moveTo(cx+Math.cos(ang)*r0,cy+Math.sin(ang)*r0);
       ctx.lineTo(cx+Math.cos(ang)*r1,cy+Math.sin(ang)*r1);
-      ctx.strokeStyle=MUTED; ctx.lineWidth=2; ctx.lineCap='butt'; ctx.stroke();
+      ctx.strokeStyle=TICK; ctx.lineWidth=2; ctx.lineCap='butt'; ctx.stroke();
     }
-    ctx.globalAlpha=1;
     // needle
     const nx=cx+Math.cos(a)*(R*0.72), ny=cy+Math.sin(a)*(R*0.72);
     ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(nx,ny);

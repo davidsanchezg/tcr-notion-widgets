@@ -109,7 +109,7 @@
       r.num.textContent=String(Math.round(v));
     });
     if(t<1) requestAnimationFrame(frame);
-    else if(p.get('loop')==='1'){ /* soft pulse loop for stress */ location.replace(location.pathname+location.search.replace(/([?&])_=\d+/,'$1').replace(/[?&]$/,'')+(location.search?'&':'?')+'_='+Date.now()); }
+    else if(p.get('loop')==='1'){ /* soft pulse loop for stress */ location.replace(location.pathname+location.search.replace(/([?&])_=\d+/,'$1').replace(/[?&]$/,'')+(location.search?'&':'?')+'_='+Date.now()+location.hash); }
   }
   requestAnimationFrame(frame);
 })();

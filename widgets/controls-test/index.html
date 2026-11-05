@@ -57,17 +57,21 @@
 :root,:root[data-theme="light"]{--bg:#ffffff;--card:#f7f6f3;--line:#e9e9e7;--track:#ecebea;--ink:#37352f;--muted:#787774;color-scheme:light}
 :root[data-theme="dark"]{--bg:#191919;--card:#202020;--line:#373737;--track:#2f2f2f;--ink:#e6e6e6;--muted:#9b9b9b;color-scheme:dark}
 /* theme-tokens:end */
+/* page-tokens:start */
+:root,:root[data-theme="light"]{--toggle-off:#e3e2e0;--pill-off:#f1f1ef}
+:root[data-theme="dark"]{--toggle-off:#2f2f2f;--pill-off:#252525}
+/* page-tokens:end */
   html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink)}
   #root{box-sizing:border-box;width:100%;height:100%;padding:16px 18px;display:flex;flex-direction:column;gap:14px;justify-content:center}
   .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
   .name{font-size:13px;font-weight:560}
   .sub{font-size:11px;color:var(--muted)}
-  .toggle{width:44px;height:26px;border-radius:999px;background:var(--track);position:relative;transition:background .25s}
+  .toggle{width:44px;height:26px;border-radius:999px;background:var(--toggle-off);position:relative;transition:background .25s}
   .toggle.on{background:var(--c,#2383e2)}
   .knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:transform .25s}
   .toggle.on .knob{transform:translateX(18px)}
   .pills{display:flex;gap:6px;flex-wrap:wrap}
-  .pill{padding:6px 12px;border-radius:999px;background:var(--track);font-size:12px;font-weight:560;opacity:.45;transform:scale(.96);transition:all .3s}
+  .pill{padding:6px 12px;border-radius:999px;background:var(--pill-off);font-size:12px;font-weight:560;opacity:.45;transform:scale(.96);transition:all .3s}
   .pill.on{opacity:1;transform:scale(1);color:#fff}
   .meter{height:10px;border-radius:999px;background:var(--track);overflow:hidden}
   .fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#2383e2,#9065b0)}
@@ -99,7 +103,7 @@
   const pillRow=document.createElement('div'); pillRow.className='pills';
   pills.forEach((lab,i)=>{
     const el=document.createElement('div'); el.className='pill'; el.textContent=lab;
-    el.style.background=i===active?colors[i%colors.length]:'var(--track)';
+    el.style.background=i===active?colors[i%colors.length]:'var(--pill-off)';
     pillRow.append(el);
     setTimeout(()=>{ if(i===active) el.classList.add('on'); }, 500+i*80);
   });

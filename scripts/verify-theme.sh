@@ -2,10 +2,11 @@
 # verify-theme.sh — checks the OS-following dark/light contract on every Pages HTML file:
 #   1. files exist and parse
 #   2. the <head> theme resolver is identical on every page, runs before first <style>, has the matchMedia default-auto path
-#   3. light/dark token palettes match the spec exactly
+#   3. light/dark token palettes match the spec exactly; page-local surface tokens (declared pages only) match exactly
 #   4. no light-only hardcoded neutrals or SVG track/text colors outside the token/resolver blocks
 #   5. resolver fixtures (run in a vm sandbox): default auto, locks, live OS change, strict postMessage origins
 #   6. index.html passes an explicit light/dark lock through to the preview iframes
+#   7. multi-ring loop reload keeps location.hash (hash locks survive the pulse loop)
 # Usage: scripts/verify-theme.sh      Exit 0 = all pass · 1 = a check failed · 2 = node missing
 # Needs node only (no npm deps).
 set -u
@@ -41,6 +42,7 @@ const SVG_ATTR_RE = /\b(?:stroke|fill)="#(?:ecebea|37352f|787774)"/gi;
 const LEAK_RE = /#(?:ffffff|787774|37352f|ecebea|e9e9e7|f7f6f3|f1f1ef|e3e2e0|d3d1cb)(?![0-9a-f])/gi;
 const RESOLVER_RE = /<!-- theme-resolver:start[^>]*-->([\s\S]*?)<!-- theme-resolver:end -->/g;
 const TOKENS_RE = /\/\* theme-tokens:start \*\/([\s\S]*?)\/\* theme-tokens:end \*\//g;
+const PAGE_TOKENS_RE = /\/\* page-tokens:start \*\/([\s\S]*?)\/\* page-tokens:end \*\//g;
 
 const results = [];
 function check(name, ok, detail) {
@@ -54,7 +56,8 @@ const inlineScripts = (html) => [...html.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<
   .map((m) => m[2]);
 const blankBlocks = (html) => html
   .replace(RESOLVER_RE, (m) => '\n'.repeat(m.split('\n').length - 1))
-  .replace(TOKENS_RE, (m) => '\n'.repeat(m.split('\n').length - 1));
+  .replace(TOKENS_RE, (m) => '\n'.repeat(m.split('\n').length - 1))
+  .replace(PAGE_TOKENS_RE, (m) => '\n'.repeat(m.split('\n').length - 1));
 const lineHits = (text, re) => {
   const flags = re.flags.replace('g', '');
   const out = [];
@@ -112,6 +115,32 @@ for (const rel of FILES) {
       && /color-scheme:light/.test(light[1]) && /color-scheme:dark/.test(dark[1]),
     'token values differ from spec');
 }
+
+// ---- 3b. page-local surface tokens: only declared pages, exact production values ----
+const PAGE_TOKENS = {
+  'widgets/controls-test/index.html': {
+    light: { '--toggle-off': '#e3e2e0', '--pill-off': '#f1f1ef' },
+    dark: { '--toggle-off': '#2f2f2f', '--pill-off': '#252525' },
+  },
+  'widgets/gauge-test/index.html': {
+    light: { '--tick': '#d3d1cb' },
+    dark: { '--tick': '#4a4a4a' },
+  },
+};
+for (const rel of Object.keys(PAGE_TOKENS)) {
+  const found = [...html[rel].matchAll(PAGE_TOKENS_RE)];
+  if (found.length !== 1) { check(`page-local token block present exactly once: ${rel}`, false, `found ${found.length}`); continue; }
+  const css = found[0][1];
+  const light = /:root,:root\[data-theme="light"\]\{([^}]*)\}/.exec(css);
+  const dark = /:root\[data-theme="dark"\]\{([^}]*)\}/.exec(css);
+  const parse = (s) => Object.fromEntries([...s.matchAll(/(--[a-z-]+)\s*:\s*(#[0-9a-f]{6})/gi)].map((m) => [m[1].toLowerCase(), m[2].toLowerCase()]));
+  check(`page-local tokens match production light + dark values: ${rel}`,
+    light && dark && sameTokens(parse(light[1]), PAGE_TOKENS[rel].light) && sameTokens(parse(dark[1]), PAGE_TOKENS[rel].dark),
+    'page-local token values differ from spec');
+}
+const undeclaredPageTokens = FILES.filter((rel) => !PAGE_TOKENS[rel] && [...html[rel].matchAll(PAGE_TOKENS_RE)].length > 0);
+check('page-local token blocks only in declared pages', undeclaredPageTokens.length === 0,
+  `undeclared page-local token block: ${undeclaredPageTokens.join(', ')}`);
 
 // ---- 4. no light-only hardcoded neutrals / SVG track+text colors ---------------
 for (const rel of FILES) {
@@ -276,6 +305,45 @@ check('index pass-through: URL without ? gets ?theme=dark', (() => {
   vm.runInNewContext(idxScript, { document: { documentElement: { dataset: { themeMode: 'dark' } }, querySelectorAll: () => frames } });
   return frames[0].src === 'widgets/bars-test/?theme=dark';
 })());
+
+// ---- 7. multi-ring loop reload keeps location.hash (hash locks survive the loop) -
+// Runs the page's own script in a vm sandbox, drives the animation frame past its duration,
+// and captures the URL passed to location.replace() by the loop branch.
+function loopReloadUrl(src, { search, hash }) {
+  let frame = null;
+  let replaced = null;
+  const stub = () => ({ style: {}, textContent: '', className: '', innerHTML: '', append() {}, querySelector: () => stub() });
+  const sandbox = {
+    URLSearchParams,
+    document: { getElementById: () => stub(), createElement: () => stub() },
+    performance: { now: () => 0 },
+    requestAnimationFrame(fn) { frame = fn; return 1; },
+    location: { pathname: '/widgets/multi-ring/', search, hash, replace(u) { replaced = u; } },
+  };
+  try {
+    vm.createContext(sandbox);
+    vm.runInContext(src, sandbox);
+    frame(1e6); // past duration → loop branch → location.replace()
+  } catch (e) { return null; }
+  return replaced;
+}
+const ML = 'widgets/multi-ring/index.html';
+const mlLoop = inlineScripts(html[ML]).find((s) => s.includes("p.get('loop')")) || '';
+const mlResolver = inlineScripts(blocks[ML] || '')[0] || '';
+const LOOP_CASES = [
+  { hash: '#theme=dark', osDark: false, want: 'dark' },
+  { hash: '#mode=light', osDark: true, want: 'light' },
+  { hash: '#dark=1', osDark: false, want: 'dark' },
+];
+const loopFails = [];
+for (const c of LOOP_CASES) {
+  const u = loopReloadUrl(mlLoop, { search: '?loop=1&n=6', hash: c.hash });
+  const pu = u ? new URL(u, 'https://local.test/') : null;
+  if (!pu || pu.hash !== c.hash || pu.searchParams.get('loop') !== '1') { loopFails.push(`${c.hash}: reload URL lost hash or loop (got ${u})`); continue; }
+  const r = runResolver(mlResolver, { search: pu.search, hash: pu.hash, osDark: c.osDark });
+  if (r.theme !== c.want || r.mode === 'auto') loopFails.push(`${c.hash}: after reload theme=${r.theme} mode=${r.mode}, want ${c.want} locked`);
+}
+check('multi-ring loop reload keeps hash locks (#theme=dark, #mode=light, #dark=1) on either OS appearance', loopFails.length === 0, loopFails.join('\n      '));
 
 // ---- summary ------------------------------------------------------------------
 const failed = results.filter((ok) => !ok).length;
