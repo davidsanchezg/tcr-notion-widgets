@@ -1,20 +1,25 @@
 # tcr-notion-widgets
 
-Public static gallery for Notion `/embed` widgets (self-contained HTML + JS).
+Public static gallery for Notion `/embed` load tests.
 
-## URL pattern
+**Site:** https://davidsanchezg.github.io/tcr-notion-widgets/
 
-`https://davidsanchezg.github.io/tcr-notion-widgets/widgets/<widget-id>/`
+## Rule
 
-Example (when content is added):
-`https://davidsanchezg.github.io/tcr-notion-widgets/widgets/ring-test/`
+No secrets or TCR metrics in this repo. Widgets are presentational. Pass numbers via URL query params when embedding.
+
+## Widget URLs
+
+- `.../widgets/ring-test/?value=72&label=Open&color=%232383e2`
+- `.../widgets/bars-test/?values=28,55,70,42,88,61`
+- `.../widgets/gauge-test/?value=64&label=Capacity`
+- `.../widgets/multi-ring/?n=6&values=40,55,70,35,82,60`
+- `.../widgets/controls-test/?toggles=1,0,1&active=2&meter=58`
 
 ## Layout
 
 ```
-widgets/
-  <widget-id>/
-    index.html   # self-contained; embed this folder URL
+widgets/<id>/index.html
 ```
 
-GitHub Pages is enabled from `main` / root. No Cloudflare Access. Keep the repo **public** so Free-tier Pages works.
+Pages source: `main` / root.

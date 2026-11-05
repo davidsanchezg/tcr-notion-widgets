@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>multi-ring</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#ffffff;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+  #root{box-sizing:border-box;width:100%;height:100%;padding:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;align-content:center}
+  .cell{display:grid;place-items:center;min-height:0}
+  svg{display:block;max-width:100%;height:auto}
+  .lab{fill:#787774;font-size:9px;letter-spacing:.03em;text-transform:uppercase}
+  .val{fill:#37352f;font-size:16px;font-weight:650;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+(function(){
+  const p=new URLSearchParams(location.search);
+  const n=Math.max(2,Math.min(12,Number(p.get('n')||6)));
+  const colors=(p.get('colors')||'#2383e2,#0f7b6c,#d9730d,#9065b0,#e03e3e,#529cca').split(',');
+  let vals;
+  if(p.get('values')) vals=p.get('values').split(',').map(Number).slice(0,n);
+  else {
+    const seed=Number(p.get('seed')||7);
+    let s=seed>>>0; const rnd=()=>{s=(s*1664525+1013904223)>>>0; return (s%1000)/1000};
+    vals=Array.from({length:n},()=>Math.round(20+rnd()*75));
+  }
+  while(vals.length<n) vals.push(50);
+  const labels=(p.get('labels')||'').split(',').filter(Boolean);
+  const dur=Math.max(400,Number(p.get('duration')||2200));
+  const root=document.getElementById('root');
+  const rings=vals.map((target,i)=>{
+    const size=118, stroke=9, r=(size-stroke)/2-1, c=2*Math.PI*r;
+    const lab=labels[i]||('K'+(i+1));
+    const cell=document.createElement('div'); cell.className='cell';
+    cell.innerHTML=`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#ecebea" stroke-width="${stroke}"/>
+      <circle class="arc" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${colors[i%colors.length]}" stroke-width="${stroke}"
+        stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c}"
+        transform="rotate(-90 ${size/2} ${size/2})"/>
+      <text class="lab" x="${size/2}" y="${size/2-8}" text-anchor="middle">${lab}</text>
+      <text class="num val" x="${size/2}" y="${size/2+12}" text-anchor="middle">0</text>
+    </svg>`;
+    root.append(cell);
+    return {arc:cell.querySelector('.arc'), num:cell.querySelector('.num'), target, c};
+  });
+  const t0=performance.now();
+  function ease(t){return 1-Math.pow(1-t,3)}
+  function frame(now){
+    const t=Math.min(1,(now-t0)/dur), e=ease(t);
+    rings.forEach(r=>{
+      const v=e*r.target;
+      r.arc.style.strokeDashoffset=String(r.c*(1-v/100));
+      r.num.textContent=String(Math.round(v));
+    });
+    if(t<1) requestAnimationFrame(frame);
+    else if(p.get('loop')==='1'){ /* soft pulse loop for stress */ location.replace(location.pathname+location.search.replace(/([?&])_=\d+/,'$1').replace(/[?&]$/,'')+(location.search?'&':'?')+'_='+Date.now()); }
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>bars-test</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#ffffff;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+  #root{box-sizing:border-box;width:100%;height:100%;padding:16px 18px 12px;display:flex;flex-direction:column}
+  .title{color:#787774;font-size:11px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px}
+  .chart{flex:1;display:flex;align-items:flex-end;gap:8px;min-height:0}
+  .col{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px}
+  .bar{width:100%;border-radius:6px 6px 2px 2px;transform-origin:bottom;height:0%;will-change:height}
+  .cap{color:#37352f;font-size:11px;font-variant-numeric:tabular-nums;font-weight:600}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+(function(){
+  const p=new URLSearchParams(location.search);
+  const colors=(p.get('colors')||'#2383e2,#0f7b6c,#d9730d,#9065b0,#e03e3e,#529cca').split(',');
+  let vals;
+  if(p.get('values')) vals=p.get('values').split(',').map(Number);
+  else {
+    const n=Math.max(3,Math.min(12,Number(p.get('n')||6)));
+    const seed=Number(p.get('seed')||42);
+    let s=seed>>>0; const rnd=()=>{s=(s*1664525+1013904223)>>>0; return (s%1000)/1000};
+    vals=Array.from({length:n},()=>Math.round(25+rnd()*70));
+  }
+  const label=p.get('label')||'Series';
+  const dur=Math.max(400,Number(p.get('duration')||1600));
+  const root=document.getElementById('root');
+  root.innerHTML=`<div class="title">${label}</div><div class="chart" id="chart"></div>`;
+  const chart=document.getElementById('chart');
+  const bars=vals.map((v,i)=>{
+    const col=document.createElement('div'); col.className='col';
+    const cap=document.createElement('div'); cap.className='cap'; cap.textContent='0';
+    const bar=document.createElement('div'); bar.className='bar';
+    bar.style.background=colors[i%colors.length];
+    col.append(bar,cap); chart.append(col);
+    return {bar,cap,v};
+  });
+  const t0=performance.now();
+  function ease(t){return 1-Math.pow(1-t,3)}
+  function frame(now){
+    const t=Math.min(1,(now-t0)/dur); const e=ease(t);
+    bars.forEach(b=>{
+      const h=e*b.v;
+      b.bar.style.height=h+'%';
+      b.cap.textContent=String(Math.round(h));
+    });
+    if(t<1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

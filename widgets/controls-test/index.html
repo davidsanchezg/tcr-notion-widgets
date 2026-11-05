@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>controls-test</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#ffffff;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#37352f}
+  #root{box-sizing:border-box;width:100%;height:100%;padding:16px 18px;display:flex;flex-direction:column;gap:14px;justify-content:center}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .name{font-size:13px;font-weight:560}
+  .sub{font-size:11px;color:#787774}
+  .toggle{width:44px;height:26px;border-radius:999px;background:#e3e2e0;position:relative;transition:background .25s}
+  .toggle.on{background:var(--c,#2383e2)}
+  .knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:transform .25s}
+  .toggle.on .knob{transform:translateX(18px)}
+  .pills{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{padding:6px 12px;border-radius:999px;background:#f1f1ef;font-size:12px;font-weight:560;opacity:.45;transform:scale(.96);transition:all .3s}
+  .pill.on{opacity:1;transform:scale(1);color:#fff}
+  .meter{height:10px;border-radius:999px;background:#ecebea;overflow:hidden}
+  .fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#2383e2,#9065b0)}
+  .title{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#787774;margin-bottom:2px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+(function(){
+  const p=new URLSearchParams(location.search);
+  const onBits=(p.get('toggles')||'1,0,1').split(',').map(x=>x==='1'||x==='true');
+  const active=Number(p.get('active')??1);
+  const meter=Math.max(0,Math.min(100,Number(p.get('meter')??58)));
+  const colors=(p.get('colors')||'#2383e2,#0f7b6c,#d9730d,#9065b0').split(',');
+  const names=(p.get('names')||'Alerts,Digest,Relay').split(',');
+  const pills=(p.get('pills')||'Day,Week,Month,Quarter').split(',');
+  const dur=Math.max(300,Number(p.get('duration')||1400));
+  const root=document.getElementById('root');
+  root.innerHTML=`<div class="title">Controls</div>`;
+  names.slice(0,onBits.length||3).forEach((name,i)=>{
+    const row=document.createElement('div'); row.className='row';
+    row.innerHTML=`<div><div class="name">${name}</div><div class="sub">surface only</div></div>
+      <div class="toggle" style="--c:${colors[i%colors.length]}"><div class="knob"></div></div>`;
+    const tog=row.querySelector('.toggle');
+    root.append(row);
+    setTimeout(()=>{ if(onBits[i]) tog.classList.add('on'); }, 200+i*180);
+  });
+  const pillRow=document.createElement('div'); pillRow.className='pills';
+  pills.forEach((lab,i)=>{
+    const el=document.createElement('div'); el.className='pill'; el.textContent=lab;
+    el.style.background=i===active?colors[i%colors.length]:'#f1f1ef';
+    pillRow.append(el);
+    setTimeout(()=>{ if(i===active) el.classList.add('on'); }, 500+i*80);
+  });
+  root.append(pillRow);
+  const mWrap=document.createElement('div');
+  mWrap.innerHTML=`<div class="sub" style="margin-bottom:6px">Meter</div><div class="meter"><div class="fill" id="fill"></div></div>`;
+  root.append(mWrap);
+  const fill=document.getElementById('fill');
+  const t0=performance.now();
+  function ease(t){return 1-Math.pow(1-t,3)}
+  function frame(now){
+    const t=Math.min(1,(now-t0)/dur);
+    fill.style.width=(ease(t)*meter)+'%';
+    if(t<1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
