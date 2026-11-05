@@ -3,40 +3,37 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>TCR Notion widgets — live grid</title>
+<title>TCR Notion widgets — row</title>
 <style>
   :root{
     --bg:#ffffff; --ink:#37352f; --muted:#787774; --line:#e9e9e7; --card:#f7f6f3;
   }
-  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
-    font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
-  #app{box-sizing:border-box;height:100%;padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px}
-  header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex:0 0 auto}
-  header h1{margin:0;font-size:13px;font-weight:650;letter-spacing:.02em}
-  header p{margin:0;font-size:11px;color:var(--muted)}
-  .grid{
-    flex:1;min-height:0;
-    display:grid;
-    grid-template-columns:repeat(6,1fr);
-    grid-template-rows:1.1fr 1fr;
-    gap:8px;
+  html,body{
+    margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+    font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;
+  }
+  #app{
+    box-sizing:border-box;height:100%;max-height:280px;
+    padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px;overflow:hidden;
+  }
+  header{flex:0 0 auto;display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  header h1{margin:0;font-size:11px;font-weight:650;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+  header p{margin:0;font-size:10px;color:var(--muted);opacity:.85}
+  .row{
+    flex:1;min-height:0;display:flex;flex-direction:row;gap:8px;overflow:hidden;
   }
   .cell{
-    background:var(--card);border:1px solid var(--line);border-radius:10px;
-    display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0;
+    flex:1 1 20%;min-width:0;min-height:0;
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    display:flex;flex-direction:column;overflow:hidden;
   }
-  .cell.wide{grid-column:span 3}
-  .cell.tall{grid-column:span 2}
   .label{
-    flex:0 0 auto;padding:6px 10px 4px;font-size:10px;letter-spacing:.04em;
-    text-transform:uppercase;color:var(--muted);font-weight:600;
+    flex:0 0 auto;padding:4px 8px 2px;font-size:9px;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--muted);font-weight:600;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;
   }
   iframe{
     flex:1;width:100%;border:0;background:#fff;display:block;min-height:0;
-  }
-  @media (max-width:700px){
-    .grid{grid-template-columns:1fr 1fr;grid-template-rows:auto}
-    .cell.wide,.cell.tall{grid-column:span 2}
   }
 </style>
 </head>
@@ -44,28 +41,28 @@
 <div id="app">
   <header>
     <h1>Widgets gallery</h1>
-    <p>Inline load test · params only · no TCR data</p>
+    <p>1 row · inline load test</p>
   </header>
-  <div class="grid">
-    <div class="cell tall">
+  <div class="row">
+    <div class="cell">
       <div class="label">ring-test</div>
       <iframe title="ring-test" loading="eager" src="widgets/ring-test/?value=72&label=Open&color=%232383e2"></iframe>
     </div>
-    <div class="cell tall">
-      <div class="label">gauge-test</div>
-      <iframe title="gauge-test" loading="eager" src="widgets/gauge-test/?value=64&label=Capacity&color=%230f7b6c"></iframe>
-    </div>
-    <div class="cell tall">
-      <div class="label">controls-test</div>
-      <iframe title="controls-test" loading="eager" src="widgets/controls-test/?toggles=1,0,1&active=2&meter=58"></iframe>
-    </div>
-    <div class="cell wide">
+    <div class="cell">
       <div class="label">bars-test</div>
       <iframe title="bars-test" loading="eager" src="widgets/bars-test/?values=28,55,70,42,88,61&label=Throughput"></iframe>
     </div>
-    <div class="cell wide">
+    <div class="cell">
+      <div class="label">gauge-test</div>
+      <iframe title="gauge-test" loading="eager" src="widgets/gauge-test/?value=64&label=Capacity&color=%230f7b6c"></iframe>
+    </div>
+    <div class="cell">
       <div class="label">multi-ring</div>
       <iframe title="multi-ring" loading="eager" src="widgets/multi-ring/?n=6&values=40,55,70,35,82,60&labels=A,B,C,D,E,F"></iframe>
+    </div>
+    <div class="cell">
+      <div class="label">controls-test</div>
+      <iframe title="controls-test" loading="eager" src="widgets/controls-test/?toggles=1,0,1&active=2&meter=58"></iframe>
     </div>
   </div>
 </div>
