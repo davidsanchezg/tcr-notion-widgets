@@ -3,15 +3,67 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="color-scheme" content="light dark"/>
 <title>gauge-test</title>
+<!-- theme-resolver:start (identical on every page; checked by scripts/verify-theme.sh) -->
+<script>
+(function(){
+  var root=document.documentElement;
+  var qs=new URLSearchParams(location.search);
+  var hs=new URLSearchParams(String(location.hash||'').replace(/^#/,''));
+  function param(k){var v=qs.get(k);if(v===null)v=hs.get(k);return v===null?'':String(v).toLowerCase();}
+  var lock=null, v=param('theme')||param('mode');
+  if(v==='light'||v==='dark')lock=v;
+  else if(v==='auto'||v==='system')lock='auto';
+  else{var d=param('dark');if(d==='1'||d==='true')lock='dark';else if(d==='0'||d==='false')lock='light';}
+  var locked=(lock==='light'||lock==='dark');
+  var mq=(typeof window.matchMedia==='function')?window.matchMedia('(prefers-color-scheme: dark)'):null;
+  var msgTheme=null;
+  function resolved(){
+    if(locked)return lock;
+    if(msgTheme)return msgTheme;
+    return(mq&&mq.matches)?'dark':'light';
+  }
+  function apply(){
+    var t=resolved();
+    root.dataset.theme=t;
+    root.dataset.themeMode=locked?lock:'auto';
+    root.style.colorScheme=t;
+    window.dispatchEvent(new CustomEvent('tcr-theme',{detail:t}));
+  }
+  apply();
+  if(mq){
+    var onMedia=function(){msgTheme=null;apply();};
+    if(mq.addEventListener)mq.addEventListener('change',onMedia);
+    else if(mq.addListener)mq.addListener(onMedia);
+  }
+  // Defensive: only Notion origins; ignored when the URL locks light/dark.
+  var TRUSTED=/^https:\/\/([a-z0-9-]+\.)?(notion\.so|notion\.site)$/;
+  window.addEventListener('message',function(e){
+    if(locked||!TRUSTED.test(String(e.origin)))return;
+    var d=e.data,t=null;
+    if(d&&typeof d==='object'){
+      if(d.theme==='dark'||d.theme==='light')t=d.theme;
+      else if(typeof d.darkMode==='boolean')t=d.darkMode?'dark':'light';
+    }
+    if(!t)return;
+    msgTheme=t;apply();
+  });
+})();
+</script>
+<!-- theme-resolver:end -->
 <style>
-  html,body{margin:0;height:100%;overflow:hidden;background:#ffffff;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+/* theme-tokens:start */
+:root,:root[data-theme="light"]{--bg:#ffffff;--card:#f7f6f3;--line:#e9e9e7;--track:#ecebea;--ink:#37352f;--muted:#787774;color-scheme:light}
+:root[data-theme="dark"]{--bg:#191919;--card:#202020;--line:#373737;--track:#2f2f2f;--ink:#e6e6e6;--muted:#9b9b9b;color-scheme:dark}
+/* theme-tokens:end */
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
   #root{width:100%;height:100%;display:grid;place-items:center}
   .wrap{position:relative;width:min(78vmin,340px);aspect-ratio:1.2/1}
   canvas{width:100%;height:100%;display:block}
   .hud{position:absolute;inset:0;display:grid;place-items:end center;padding-bottom:12%}
-  .hud .v{font-size:clamp(28px,8vmin,42px);font-weight:700;color:#37352f;font-variant-numeric:tabular-nums;line-height:1}
-  .hud .l{font-size:11px;color:#787774;letter-spacing:.05em;text-transform:uppercase;margin-top:4px;text-align:center}
+  .hud .v{font-size:clamp(28px,8vmin,42px);font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1}
+  .hud .l{font-size:11px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-top:4px;text-align:center}
 </style>
 </head>
 <body>
@@ -27,6 +79,8 @@
   const canvas=document.getElementById('c');
   const ctx=canvas.getContext('2d');
   const dpr=devicePixelRatio||1;
+  // Canvas cannot read var(); resolve the theme tokens from computed style on every draw.
+  function tok(name){return getComputedStyle(document.documentElement).getPropertyValue(name).trim();}
   function resize(){
     const r=canvas.getBoundingClientRect();
     canvas.width=r.width*dpr; canvas.height=r.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -37,31 +91,34 @@
   const t0=performance.now();
   function ease(t){return 1-Math.pow(1-t,3)}
   function draw(v){
+    const TRACK=tok('--track'), INK=tok('--ink'), MUTED=tok('--muted');
     const w=canvas.clientWidth,h=canvas.clientHeight;
     ctx.clearRect(0,0,w,h);
     const cx=w/2, cy=h*0.78, R=Math.min(w,h)*0.55;
     const start=Math.PI*1.1, end=Math.PI*-0.1, span=end-start;
     // track
     ctx.beginPath(); ctx.arc(cx,cy,R,start,end,false);
-    ctx.strokeStyle='#ecebea'; ctx.lineWidth=Math.max(10,R*0.14); ctx.lineCap='round'; ctx.stroke();
+    ctx.strokeStyle=TRACK; ctx.lineWidth=Math.max(10,R*0.14); ctx.lineCap='round'; ctx.stroke();
     // fill
     const a=start+span*(v/100);
     ctx.beginPath(); ctx.arc(cx,cy,R,start,a,false);
     ctx.strokeStyle=color; ctx.stroke();
     // ticks
+    ctx.globalAlpha=0.45;
     for(let i=0;i<=10;i++){
       const t=i/10, ang=start+span*t;
       const r0=R-ctx.lineWidth*0.85, r1=R-ctx.lineWidth*1.35;
       ctx.beginPath();
       ctx.moveTo(cx+Math.cos(ang)*r0,cy+Math.sin(ang)*r0);
       ctx.lineTo(cx+Math.cos(ang)*r1,cy+Math.sin(ang)*r1);
-      ctx.strokeStyle='#d3d1cb'; ctx.lineWidth=2; ctx.lineCap='butt'; ctx.stroke();
+      ctx.strokeStyle=MUTED; ctx.lineWidth=2; ctx.lineCap='butt'; ctx.stroke();
     }
+    ctx.globalAlpha=1;
     // needle
     const nx=cx+Math.cos(a)*(R*0.72), ny=cy+Math.sin(a)*(R*0.72);
     ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(nx,ny);
-    ctx.strokeStyle='#37352f'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2); ctx.fillStyle='#37352f'; ctx.fill();
+    ctx.strokeStyle=INK; ctx.lineWidth=3; ctx.lineCap='round'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2); ctx.fillStyle=INK; ctx.fill();
   }
   function frame(now){
     const t=Math.min(1,(now-t0)/dur);
@@ -70,6 +127,8 @@
     draw(cur);
     if(t<1) requestAnimationFrame(frame);
   }
+  // Live recolor when the OS appearance (or a trusted postMessage) flips the theme.
+  window.addEventListener('tcr-theme',()=>draw(cur));
   requestAnimationFrame(frame);
 })();
 </script>
