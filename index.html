@@ -3,11 +3,60 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="color-scheme" content="light dark"/>
 <title>TCR Notion widgets — row</title>
-<style>
-  :root{
-    --bg:#ffffff; --ink:#37352f; --muted:#787774; --line:#e9e9e7; --card:#f7f6f3;
+<!-- theme-resolver:start (identical on every page; checked by scripts/verify-theme.sh) -->
+<script>
+(function(){
+  var root=document.documentElement;
+  var qs=new URLSearchParams(location.search);
+  var hs=new URLSearchParams(String(location.hash||'').replace(/^#/,''));
+  function param(k){var v=qs.get(k);if(v===null)v=hs.get(k);return v===null?'':String(v).toLowerCase();}
+  var lock=null, v=param('theme')||param('mode');
+  if(v==='light'||v==='dark')lock=v;
+  else if(v==='auto'||v==='system')lock='auto';
+  else{var d=param('dark');if(d==='1'||d==='true')lock='dark';else if(d==='0'||d==='false')lock='light';}
+  var locked=(lock==='light'||lock==='dark');
+  var mq=(typeof window.matchMedia==='function')?window.matchMedia('(prefers-color-scheme: dark)'):null;
+  var msgTheme=null;
+  function resolved(){
+    if(locked)return lock;
+    if(msgTheme)return msgTheme;
+    return(mq&&mq.matches)?'dark':'light';
   }
+  function apply(){
+    var t=resolved();
+    root.dataset.theme=t;
+    root.dataset.themeMode=locked?lock:'auto';
+    root.style.colorScheme=t;
+    window.dispatchEvent(new CustomEvent('tcr-theme',{detail:t}));
+  }
+  apply();
+  if(mq){
+    var onMedia=function(){msgTheme=null;apply();};
+    if(mq.addEventListener)mq.addEventListener('change',onMedia);
+    else if(mq.addListener)mq.addListener(onMedia);
+  }
+  // Defensive: only Notion origins; ignored when the URL locks light/dark.
+  var TRUSTED=/^https:\/\/([a-z0-9-]+\.)?(notion\.so|notion\.site)$/;
+  window.addEventListener('message',function(e){
+    if(locked||!TRUSTED.test(String(e.origin)))return;
+    var d=e.data,t=null;
+    if(d&&typeof d==='object'){
+      if(d.theme==='dark'||d.theme==='light')t=d.theme;
+      else if(typeof d.darkMode==='boolean')t=d.darkMode?'dark':'light';
+    }
+    if(!t)return;
+    msgTheme=t;apply();
+  });
+})();
+</script>
+<!-- theme-resolver:end -->
+<style>
+/* theme-tokens:start */
+:root,:root[data-theme="light"]{--bg:#ffffff;--card:#f7f6f3;--line:#e9e9e7;--track:#ecebea;--ink:#37352f;--muted:#787774;color-scheme:light}
+:root[data-theme="dark"]{--bg:#191919;--card:#202020;--line:#373737;--track:#2f2f2f;--ink:#e6e6e6;--muted:#9b9b9b;color-scheme:dark}
+/* theme-tokens:end */
   html,body{
     margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
     font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;
@@ -19,6 +68,8 @@
   header{flex:0 0 auto;display:flex;align-items:baseline;justify-content:space-between;gap:8px}
   header h1{margin:0;font-size:11px;font-weight:650;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
   header p{margin:0;font-size:10px;color:var(--muted);opacity:.85}
+  header a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+  header a:hover{color:var(--ink)}
   .row{
     flex:1;min-height:0;display:flex;flex-direction:row;gap:8px;overflow:hidden;
   }
@@ -33,7 +84,7 @@
     overflow:hidden;text-overflow:ellipsis;
   }
   iframe{
-    flex:1;width:100%;border:0;background:#fff;display:block;min-height:0;
+    flex:1;width:100%;border:0;background:var(--bg);display:block;min-height:0;
   }
 </style>
 </head>
@@ -41,30 +92,41 @@
 <div id="app">
   <header>
     <h1>Widgets gallery</h1>
-    <p>1 row · inline load test</p>
+    <p>1 row · inline load test · theme: <a href="?theme=auto">auto</a> <a href="?theme=light">light</a> <a href="?theme=dark">dark</a></p>
   </header>
   <div class="row">
     <div class="cell">
       <div class="label">ring-test</div>
-      <iframe title="ring-test" loading="eager" src="widgets/ring-test/?value=72&label=Open&color=%232383e2"></iframe>
+      <iframe title="ring-test" loading="eager" data-src="widgets/ring-test/?value=72&label=Open&color=%232383e2"></iframe>
     </div>
     <div class="cell">
       <div class="label">bars-test</div>
-      <iframe title="bars-test" loading="eager" src="widgets/bars-test/?values=28,55,70,42,88,61&label=Throughput"></iframe>
+      <iframe title="bars-test" loading="eager" data-src="widgets/bars-test/?values=28,55,70,42,88,61&label=Throughput"></iframe>
     </div>
     <div class="cell">
       <div class="label">gauge-test</div>
-      <iframe title="gauge-test" loading="eager" src="widgets/gauge-test/?value=64&label=Capacity&color=%230f7b6c"></iframe>
+      <iframe title="gauge-test" loading="eager" data-src="widgets/gauge-test/?value=64&label=Capacity&color=%230f7b6c"></iframe>
     </div>
     <div class="cell">
       <div class="label">multi-ring</div>
-      <iframe title="multi-ring" loading="eager" src="widgets/multi-ring/?n=6&values=40,55,70,35,82,60&labels=A,B,C,D,E,F"></iframe>
+      <iframe title="multi-ring" loading="eager" data-src="widgets/multi-ring/?n=6&values=40,55,70,35,82,60&labels=A,B,C,D,E,F"></iframe>
     </div>
     <div class="cell">
       <div class="label">controls-test</div>
-      <iframe title="controls-test" loading="eager" src="widgets/controls-test/?toggles=1,0,1&active=2&meter=58"></iframe>
+      <iframe title="controls-test" loading="eager" data-src="widgets/controls-test/?toggles=1,0,1&active=2&meter=58"></iframe>
     </div>
   </div>
 </div>
+<script>
+/* Pass an explicit light/dark lock down to the embeds; omitted/auto lets each embed follow the OS. */
+(function(){
+  var mode=document.documentElement.dataset.themeMode;
+  var suffix=(mode==='light'||mode==='dark')?'theme='+mode:'';
+  document.querySelectorAll('iframe[data-src]').forEach(function(f){
+    var s=f.getAttribute('data-src');
+    f.src=suffix?s+(s.indexOf('?')<0?'?':'&')+suffix:s;
+  });
+})();
+</script>
 </body>
 </html>
