@@ -19,3 +19,9 @@ No secrets or TCR metrics in this repo. Pass numbers via URL query params.
 - `widgets/controls-test/?toggles=1,0,1&active=2&meter=58`
 
 Pages source: `main` / root.
+
+## TCR Control Room glance
+
+`widgets/tcr-glance/?cards=0&needs=1&active=7&states=En%20curso,Planeado&stateVals=6,1&seats=Cryptor,unknown&seatVals=4,3`
+
+Params only — bump Control Room embed `?v=` after each deploy.

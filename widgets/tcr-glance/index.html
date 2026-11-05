@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TCR open glance</title>
+<style>
+  :root{--bg:#fff;--ink:#37352f;--muted:#787774;--line:#e9e9e7;--card:#f7f6f3;
+    --blue:#2383e2;--green:#0f7b6c;--orange:#d9730d;--purple:#9065b0;--red:#e03e3e;--gray:#9b9a97}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+    font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+  #app{box-sizing:border-box;height:100%;max-height:280px;padding:8px 10px 10px;
+    display:flex;flex-direction:column;gap:6px;overflow:hidden}
+  .kpi{flex:0 0 auto;font-size:11px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+  .kpi b{color:var(--ink);font-weight:650}
+  .row{flex:1;min-height:0;display:flex;gap:8px;overflow:hidden}
+  .cell{flex:1 1 33%;min-width:0;min-height:0;background:var(--card);border:1px solid var(--line);
+    border-radius:8px;display:flex;flex-direction:column;overflow:hidden;padding:6px 8px 8px}
+  .lab{font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px}
+  .stage{flex:1;min-height:0;position:relative}
+  canvas,svg{width:100%;height:100%;display:block}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:4px}
+  .legend span{font-size:10px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+  .dot{width:7px;height:7px;border-radius:2px;display:inline-block}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="kpi" id="kpi"></div>
+  <div class="row">
+    <div class="cell"><div class="lab">Líneas por estado</div><div class="stage" id="donut"></div><div class="legend" id="donutLeg"></div></div>
+    <div class="cell"><div class="lab">Activas por seat</div><div class="stage" id="bars"></div></div>
+    <div class="cell"><div class="lab">Atención Operador</div><div class="stage" id="gauge"></div></div>
+  </div>
+</div>
+<script>
+(function(){
+  const p=new URLSearchParams(location.search);
+  const split=(k,d)=> (p.get(k)||d).split(',').map(s=>decodeURIComponent(s.trim())).filter(Boolean);
+  const nums=(k,d)=> split(k,d).map(Number);
+  const stateLabels=split('states','En curso,Planeado');
+  const stateVals=nums('stateVals','6,1');
+  const seatLabels=split('seats','Cryptor,unknown');
+  const seatVals=nums('seatVals','4,3');
+  const cardsOpen=Number(p.get('cards')??0);
+  const needs=Number(p.get('needs')??1);
+  const active=Number(p.get('active')?? stateVals.reduce((a,b)=>a+b,0));
+  const dur=Math.max(500,Number(p.get('duration')||1600));
+  const colors=['#2383e2','#d9730d','#9065b0','#0f7b6c','#e03e3e','#529cca','#9b9a97'];
+
+  document.getElementById('kpi').innerHTML=
+    `<span>Tarjetas abiertas <b>${cardsOpen}</b></span>`+
+    `<span>Necesita Operador <b>${needs}</b></span>`+
+    `<span>Líneas activas <b>${active}</b></span>`;
+
+  function ease(t){return 1-Math.pow(1-t,3)}
+  const t0=performance.now();
+
+  // --- Donut ---
+  const donutHost=document.getElementById('donut');
+  const totalStates=Math.max(1,stateVals.reduce((a,b)=>a+b,0));
+  const size=Math.min(donutHost.clientWidth||160, donutHost.clientHeight||140)||140;
+  const stroke=Math.max(10,size*0.12|0), r=(size-stroke)/2-2, C=2*Math.PI*r;
+  let svg=`<svg viewBox="0 0 ${size} ${size}" width="100%" height="100%">`;
+  let offset=0;
+  stateVals.forEach((v,i)=>{
+    const len=C*(v/totalStates);
+    svg+=`<circle class="seg" data-i="${i}" cx="${size/2}" cy="${size/2}" r="${r}" fill="none"
+      stroke="${colors[i%colors.length]}" stroke-width="${stroke}" stroke-linecap="butt"
+      stroke-dasharray="0 ${C}" stroke-dashoffset="${-offset}"
+      transform="rotate(-90 ${size/2} ${size/2})"/>`;
+    offset+=len;
+  });
+  svg+=`<text x="${size/2}" y="${size/2-4}" text-anchor="middle" fill="#787774" font-size="10">líneas</text>`;
+  svg+=`<text id="donutN" x="${size/2}" y="${size/2+14}" text-anchor="middle" fill="#37352f" font-size="22" font-weight="700">0</text></svg>`;
+  donutHost.innerHTML=svg;
+  const segs=[...donutHost.querySelectorAll('.seg')];
+  document.getElementById('donutLeg').innerHTML=stateLabels.map((l,i)=>
+    `<span><i class="dot" style="background:${colors[i%colors.length]}"></i>${l} ${stateVals[i]||0}</span>`).join('');
+
+  // --- Bars ---
+  const barsHost=document.getElementById('bars');
+  const maxSeat=Math.max(1,...seatVals);
+  barsHost.innerHTML=`<div style="display:flex;align-items:flex-end;gap:6px;height:100%;padding-top:4px" id="barRow"></div>`;
+  const barRow=document.getElementById('barRow');
+  const barEls=seatLabels.map((lab,i)=>{
+    const col=document.createElement('div');
+    col.style.cssText='flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;min-width:0';
+    col.innerHTML=`<div class="b" style="width:100%;border-radius:5px 5px 2px 2px;background:${colors[i%colors.length]};height:0%"></div>
+      <div style="font-size:10px;font-weight:650;font-variant-numeric:tabular-nums" class="n">0</div>
+      <div style="font-size:9px;color:#787774;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">${lab}</div>`;
+    barRow.append(col);
+    return {b:col.querySelector('.b'),n:col.querySelector('.n'),v:seatVals[i]||0};
+  });
+
+  // --- Gauge attention ---
+  const gHost=document.getElementById('gauge');
+  gHost.innerHTML=`<canvas id="gc"></canvas>
+    <div style="position:absolute;inset:0;display:grid;place-items:center;pointer-events:none">
+      <div style="text-align:center"><div id="gn" style="font-size:28px;font-weight:700;font-variant-numeric:tabular-nums">0</div>
+      <div style="font-size:10px;color:#787774;text-transform:uppercase;letter-spacing:.04em">de ${active} activas</div></div>
+    </div>`;
+  gHost.style.position='relative';
+  const canvas=document.getElementById('gc');
+  const ctx=canvas.getContext('2d');
+  function resizeG(){
+    const r=gHost.getBoundingClientRect(); const dpr=devicePixelRatio||1;
+    canvas.width=r.width*dpr; canvas.height=r.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  resizeG();
+
+  function drawG(v){
+    const w=canvas.clientWidth,h=canvas.clientHeight; ctx.clearRect(0,0,w,h);
+    const cx=w/2, cy=h*0.72, R=Math.min(w,h)*0.48;
+    const start=Math.PI*1.15, end=Math.PI*-0.15, span=end-start;
+    ctx.beginPath(); ctx.arc(cx,cy,R,start,end,false);
+    ctx.strokeStyle='#ecebea'; ctx.lineWidth=Math.max(10,R*0.16); ctx.lineCap='round'; ctx.stroke();
+    const pct=active? Math.min(1,v/active):0;
+    ctx.beginPath(); ctx.arc(cx,cy,R,start,start+span*pct,false);
+    ctx.strokeStyle=pct>0.5?'#e03e3e':(pct>0?'#d9730d':'#0f7b6c'); ctx.stroke();
+  }
+
+  function frame(now){
+    const t=Math.min(1,(now-t0)/dur), e=ease(t);
+    // donut
+    let off=0;
+    segs.forEach((el,i)=>{
+      const full=C*((stateVals[i]||0)/totalStates);
+      const len=full*e;
+      el.setAttribute('stroke-dasharray', `${len} ${C-len}`);
+      el.setAttribute('stroke-dashoffset', String(-off));
+      off+=full; // grow from final offsets? use progressive off with e
+    });
+    // fix offset accumulation with eased lengths
+    off=0; segs.forEach((el,i)=>{
+      const full=C*((stateVals[i]||0)/totalStates);
+      const len=full*e;
+      el.setAttribute('stroke-dasharray', `${len} ${C}`);
+      el.setAttribute('stroke-dashoffset', String(-off));
+      off+=len;
+    });
+    document.getElementById('donutN').textContent=String(Math.round(totalStates*e));
+    barEls.forEach(b=>{
+      const h=e*(b.v/maxSeat)*100;
+      b.b.style.height=h+'%';
+      b.n.textContent=String(Math.round(e*b.v));
+    });
+    const nv=e*needs;
+    document.getElementById('gn').textContent=String(Math.round(nv));
+    drawG(nv);
+    if(t<1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  addEventListener('resize',()=>{resizeG(); drawG(needs);});
+})();
+</script>
+</body>
+</html>
