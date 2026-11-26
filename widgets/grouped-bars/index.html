@@ -72,7 +72,9 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
 .track{flex:1;height:12px;background:var(--track);border-radius:4px;overflow:hidden;position:relative}
 .fill{position:relative;z-index:1;height:100%;border-radius:4px;width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
 .static .fill{transition:none}
-.band{position:absolute;z-index:2;top:0;bottom:0;background:rgba(15,123,108,.18);border-left:1px dashed var(--green);border-right:1px dashed var(--green)}
+.band{position:absolute;z-index:2;top:0;bottom:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.6) 0 2px,rgba(0,0,0,.45) 2px 4px,transparent 4px 7px);border-left:2px solid var(--ink);border-right:2px solid var(--ink);box-shadow:0 0 0 1px var(--bg)}
+.leg i.bandsw{background:repeating-linear-gradient(135deg,rgba(255,255,255,.6) 0 2px,rgba(0,0,0,.45) 2px 4px,transparent 4px 7px),var(--track);border-left:2px solid var(--ink);border-right:2px solid var(--ink)}
+.sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 .n{font-size:10px;min-width:26px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
 .leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:var(--muted)}
 .leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
@@ -100,7 +102,7 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
   const max=(Number.isFinite(mx)&&mx>0)?mx:Math.max(1,...V.flat(),...bands.filter(Boolean).flat());
   const pct=x=>Math.max(0,Math.min(100,x/max*100));
   if(p.get('anim')==='0')document.documentElement.classList.add('static');
-  let h='';
+  let h='<div aria-hidden="true">';
   if(p.get('title'))h+='<div class="ttl">'+esc(p.get('title'))+'</div>';
   if(p.get('sub'))h+='<div class="sub">'+esc(p.get('sub'))+'</div>';
   labels.forEach((l,j)=>{
@@ -110,7 +112,12 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
          '<div class="fill" data-w="'+pct(v)+'" style="background:'+C[i%C.length]+'"></div></div><div class="n">'+v+'</div></div>';});
     h+='</div></div>';
   });
-  h+='<div class="leg">'+series.map((s,i)=>'<span><i style="background:'+C[i%C.length]+'"></i>'+esc(s)+'</span>').join('')+(bands.some(Boolean)?'<span><i style="background:rgba(15,123,108,.3);outline:1px dashed var(--green)"></i>'+esc(p.get('bandLabel')||'Target range')+'</span>':'')+'</div>';
+  h+='<div class="leg">'+series.map((s,i)=>'<span><i style="background:'+C[i%C.length]+'"></i>'+esc(s)+'</span>').join('')+(bands.some(Boolean)?'<span><i class="bandsw"></i>'+esc(p.get('bandLabel')||'Target range')+'</span>':'')+'</div>';
+  h+='</div>';
+  // Accessible table: one row per category, one column per series, plus the target range when present.
+  const hasBand=bands.some(Boolean),bl=esc(p.get('bandLabel')||'Target range');
+  h+='<table class="sr"><caption>'+esc(p.get('title')||'Grouped bars')+(p.get('sub')?', '+esc(p.get('sub')):'')+'</caption><thead><tr><th scope="col">Category</th>'+series.map(s=>'<th scope="col">'+esc(s)+'</th>').join('')+(hasBand?'<th scope="col">'+bl+'</th>':'')+'</tr></thead><tbody>'+
+     labels.map((l,j)=>'<tr><th scope="row">'+esc(l)+'</th>'+series.map((s,i)=>'<td>'+(V[i][j]||0)+'</td>').join('')+(hasBand?'<td>'+(bands[j]?bands[j][0]+' to '+bands[j][1]:'None')+'</td>':'')+'</tr>').join('')+'</tbody></table>';
   document.getElementById('app').innerHTML=h;
   requestAnimationFrame(()=>requestAnimationFrame(()=>document.querySelectorAll('.fill').forEach(f=>f.style.width=f.dataset.w+'%')));
 })();
