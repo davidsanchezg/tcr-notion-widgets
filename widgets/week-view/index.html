@@ -76,12 +76,13 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
 .col{position:relative;border-left:1px solid var(--line)}
 .hr{position:absolute;left:0;right:0;border-top:1px solid var(--line);opacity:.6}
 .hl{position:absolute;right:4px;font-size:9px;color:var(--muted);transform:translateY(-50%)}
-.ev{position:absolute;left:2px;right:2px;border-radius:5px;padding:2px 4px;font-size:10px;line-height:1.2;overflow:hidden;color:#fff;border:1px solid rgba(0,0,0,.08)}
+.ev{position:absolute;border-radius:5px;padding:2px 4px;font-size:10px;line-height:1.2;overflow:hidden;color:#fff;border:1px solid rgba(0,0,0,.08)}
 .ev.flag{outline:2px solid var(--gold);outline-offset:-1px}
 .ev span{display:block;opacity:.9;font-size:9px;white-space:nowrap}
 .ev{white-space:nowrap;text-overflow:ellipsis}
 .leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:var(--muted)}
 .leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 .empty{font-size:12px;color:var(--muted);padding:20px;text-align:center}
 </style>
 </head>
@@ -92,59 +93,81 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
   // Data comes only from the URL: ?d=<base64url JSON> (no data stored in this repo).
   // JSON: {t:title, w:["YYYY-MM-DD" Mondays], s:startHour, e:endHour, today:"YYYY-MM-DD",
   //        c:["#hex",...], leg:[[label,colorIdx]], ev:[[date,start,end,title,colorIdx,flag,detail]]}
-  // Malformed parts are dropped; hours must satisfy 0 <= s < e <= 24 (else 7-22).
+  // Malformed parts are dropped; only primitives are coerced; hours must satisfy 0 <= s < e <= 24 (else 7-22).
+  // Overlapping events are laid out in side-by-side lanes; a screen-reader agenda lists every event with date and time.
   const app=document.getElementById('app');
   const p=new URLSearchParams(location.search);
   const empty=()=>{app.innerHTML='<div class="empty">No data. Pass ?d=&lt;base64url JSON&gt;.</div>'};
   let D=null;
   try{const b=(p.get('d')||'').replace(/-/g,'+').replace(/_/g,'/');
       D=JSON.parse(decodeURIComponent(escape(atob(b))));}catch(e){D=null}
-  const ISO=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&!isNaN(new Date(s+'T12:00:00Z'))&&new Date(s+'T12:00:00Z').toISOString().slice(0,10)===s;
-  if(!D||typeof D!=='object'||!Array.isArray(D.w)){empty();return;}
+  if(!D||typeof D!=='object'||Array.isArray(D)||!Array.isArray(D.w)){empty();return;}
+  const str=v=>(typeof v==='string'||typeof v==='number'||typeof v==='boolean')?String(v):'';
+  const num=(v,d)=>{if(typeof v!=='number'&&!(typeof v==='string'&&v.trim()!==''))return d;const n=Number(v);return Number.isFinite(n)?n:d};
+  const ISO=s=>{if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const t=new Date(s+'T12:00:00Z');return !isNaN(t)&&t.toISOString().slice(0,10)===s};
   const W=D.w.filter(ISO);
   if(!W.length){empty();return;}
   const HEX=/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
   const DEF=['#2383e2','#0f7b6c','#d9730d','#9065b0','#e03e3e','#9b9a97','#c8a127'];
-  const C=(Array.isArray(D.c)&&D.c.length)?D.c.map((c,i)=>HEX.test(String(c))?String(c):DEF[i%DEF.length]):DEF;
-  const col=i=>{const n=Math.trunc(Number(i))||0;return C[((n%C.length)+C.length)%C.length]};
-  const num=(v,d)=>{const n=Number(v);return(v!==null&&v!==undefined&&v!==''&&Number.isFinite(n))?n:d};
+  const C=(Array.isArray(D.c)&&D.c.length)?D.c.map((c,i)=>(typeof c==='string'&&HEX.test(c))?c:DEF[i%DEF.length]):DEF;
+  const col=i=>{const n=Math.trunc(num(i,0));return C[((n%C.length)+C.length)%C.length]};
   let S=Math.floor(num(D.s,7)),E=Math.ceil(num(D.e,22));
   if(!(S>=0&&S<E&&E<=24)){S=7;E=22;}
-  const PX=Math.max(8,Math.min(120,num(p.get('px')||D.px,22)));
-  const EV=(Array.isArray(D.ev)?D.ev:[]).filter(e=>Array.isArray(e)&&ISO(e[0])&&Number.isFinite(Number(e[1]))&&Number.isFinite(Number(e[2]))&&Number(e[2])>Number(e[1]))
-    .map(e=>[e[0],Number(e[1]),Number(e[2]),e[3]==null?'':e[3],e[4],e[5],e[6]==null?'':e[6]]).filter(e=>e[2]>S&&e[1]<E);
-  const LEG=Array.isArray(D.leg)?D.leg.filter(l=>Array.isArray(l)):null;
+  const PX=Math.max(8,Math.min(120,num(p.get('px'),num(D.px,22))));
+  const TODAY=ISO(D.today)?D.today:'';
+  const ALL=(Array.isArray(D.ev)?D.ev:[]).filter(e=>Array.isArray(e)&&ISO(e[0])&&num(e[1],NaN)>=0&&num(e[1],NaN)<num(e[2],NaN)&&num(e[2],NaN)<=24)
+    .map(e=>({d:e[0],a:num(e[1],0),z:num(e[2],0),t:str(e[3]),c:e[4],f:e[5]===true||e[5]===1,x:str(e[6])}))
+    .sort((m,n)=>m.d<n.d?-1:m.d>n.d?1:(m.a-n.a)||(m.z-n.z));
+  const LEG=Array.isArray(D.leg)?D.leg.filter(l=>Array.isArray(l)):[];
   const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
   const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const DL=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const add=(iso,n)=>{const d=new Date(iso+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
   const fmtH=h=>{const hh=Math.floor(h),ap=hh>=12?'PM':'AM',h12=((hh+11)%12)+1;return h12+' '+ap};
-  let cur=Math.max(0,Math.min(W.length-1,Math.trunc(Number(p.get('week')||0))||0));
+  const fmtT=h=>{let m=Math.round(h*60);if(m>=1440)return '12:00 AM (end of day)';const hh=Math.floor(m/60),mm=m%60,ap=hh>=12?'PM':'AM';return(((hh+11)%12)+1)+':'+String(mm).padStart(2,'0')+' '+ap};
+  let cur=Math.max(0,Math.min(W.length-1,Math.trunc(num(p.get('week'),0))));
+  // Lane layout on the drawn (pixel) extents, so minimum-height blocks never cover each other.
+  function lanes(list){
+    let group=[],end=-Infinity;const out=[];
+    const flush=()=>{const lane=[];group.forEach(g=>{let k=0;while(lane[k]!==undefined&&lane[k]>g.top+0.5)k++;lane[k]=g.bot;g.lane=k;});group.forEach(g=>g.n=lane.length);out.push(...group);group=[];};
+    list.forEach(g=>{if(group.length&&g.top>=end-0.5){flush();end=-Infinity;}group.push(g);end=Math.max(end,g.bot);});
+    if(group.length)flush();
+    return out;
+  }
   function render(){
     const w=W[cur],days=[...Array(7)].map((_,i)=>add(w,i)),H=(E-S)*PX;
     const label=i=>{const a=new Date(W[i]+'T12:00:00Z');return 'Week of '+MN[a.getUTCMonth()]+' '+a.getUTCDate()};
-    let h='<div class="top"><div class="ttl">'+esc(D.t||'')+'</div>';
-    if(W.length>1)h+='<div class="tabs" role="group">'+W.map((_,i)=>'<button data-i="'+i+'" aria-pressed="'+(i===cur)+'">'+label(i)+'</button>').join('')+'</div>';
-    h+='</div><div class="grid"><div class="dh"></div>';
-    days.forEach((d,i)=>{const x=new Date(d+'T12:00:00Z');h+='<div class="dh'+(d===D.today?' today':'')+'">'+DN[i]+'<b>'+MN[x.getUTCMonth()]+' '+x.getUTCDate()+'</b></div>';});
+    const long=(d,i)=>{const x=new Date(d+'T12:00:00Z');return DL[i]+' '+MN[x.getUTCMonth()]+' '+x.getUTCDate()};
+    let h='<div class="top"><div class="ttl">'+esc(str(D.t))+'</div>';
+    if(W.length>1)h+='<div class="tabs" role="group" aria-label="Week">'+W.map((_,i)=>'<button type="button" data-i="'+i+'" aria-pressed="'+(i===cur)+'">'+label(i)+'</button>').join('')+'</div>';
+    h+='</div><div class="grid" aria-hidden="true"><div class="dh"></div>';
+    days.forEach((d,i)=>{const x=new Date(d+'T12:00:00Z');h+='<div class="dh'+(d===TODAY?' today':'')+'">'+DN[i]+'<b>'+MN[x.getUTCMonth()]+' '+x.getUTCDate()+'</b></div>';});
     h+='<div class="gut" style="height:'+H+'px">';
     for(let k=S+1;k<E;k++)h+='<div class="hl" style="top:'+((k-S)*PX)+'px">'+fmtH(k)+'</div>';
     h+='</div>';
     days.forEach(d=>{
       h+='<div class="col" style="height:'+H+'px">';
       for(let k=S+1;k<E;k++)h+='<div class="hr" style="top:'+((k-S)*PX)+'px"></div>';
-      EV.filter(e=>e[0]===d).forEach(e=>{
-        const a=Math.max(S,e[1]),z=Math.min(E,e[2]),top=(a-S)*PX,ht=Math.min(H-top,Math.max(e[6]?30:PX*0.9,(z-a)*PX));
-        h+='<div class="ev'+(e[5]?' flag':'')+'" title="'+esc(e[3]+(e[6]?' · '+e[6]:''))+'" style="top:'+top+'px;height:'+ht+'px;background:'+col(e[4])+'">'+esc(e[3])+(e[6]?'<span>'+esc(e[6])+'</span>':'')+'</div>';
+      const vis=ALL.filter(e=>e.d===d&&e.z>S&&e.a<E).map(e=>{const a=Math.max(S,e.a),z=Math.min(E,e.z),top=(a-S)*PX,ht=Math.min(H-top,Math.max(e.x?30:PX*0.9,(z-a)*PX));return{e:e,top:top,ht:ht,bot:top+ht}});
+      lanes(vis).forEach(g=>{const e=g.e,wd=100/g.n;
+        h+='<div class="ev'+(e.f?' flag':'')+'" title="'+esc(fmtT(e.a)+'–'+fmtT(e.z)+' · '+e.t+(e.x?' · '+e.x:''))+'" style="top:'+g.top+'px;height:'+g.ht+'px;left:calc('+(g.lane*wd)+'% + 2px);width:calc('+wd+'% - 4px);background:'+col(e.c)+'">'+esc(e.t)+(e.x?'<span>'+esc(e.x)+'</span>':'')+'</div>';
       });
       h+='</div>';
     });
     h+='</div>';
-    if(LEG&&LEG.length)h+='<div class="leg">'+LEG.map(l=>'<span><i style="background:'+(l[1]==='flag'?'transparent;outline:2px solid var(--gold)':col(l[1]))+'"></i>'+esc(l[0]==null?'':l[0])+'</span>').join('')+'</div>';
+    // Accessible agenda: every event of the selected week, with its date and full start/end time.
+    h+='<div class="sr" role="region" aria-label="'+esc((str(D.t)||'Schedule')+', '+label(cur))+'">';
+    days.forEach((d,i)=>{const evs=ALL.filter(e=>e.d===d);
+      h+='<h3>'+long(d,i)+(d===TODAY?' (today)':'')+'</h3>';
+      h+=evs.length?'<ul>'+evs.map(e=>'<li>'+fmtT(e.a)+' to '+fmtT(e.z)+': '+esc(e.t||'Untitled')+(e.x?', '+esc(e.x):'')+(e.f?' (flagged)':'')+'</li>').join('')+'</ul>':'<p>No events.</p>';
+    });
+    h+='</div>';
+    if(LEG.length)h+='<div class="leg" aria-hidden="true">'+LEG.map(l=>'<span><i style="background:'+(l[1]==='flag'?'transparent;outline:2px solid var(--gold)':col(l[1]))+'"></i>'+esc(str(l[0]))+'</span>').join('')+'</div>';
     app.innerHTML=h;
     app.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{cur=Number(b.dataset.i);render();const nb=app.querySelector('.tabs button[data-i="'+cur+'"]');if(nb)nb.focus();});
   }
-  render();
+  try{render();}catch(err){empty();}
 })();
 </script>
 </body>

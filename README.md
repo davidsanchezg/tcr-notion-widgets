@@ -17,7 +17,7 @@ No secrets or TCR metrics in this repo. Pass numbers via URL query params.
 - `widgets/gauge-test/?value=64&label=Capacity`
 - `widgets/multi-ring/?n=6&values=40,55,70,35,82,60`
 - `widgets/controls-test/?toggles=1,0,1&active=2&meter=58`
-- `widgets/week-view/?d=<base64url JSON>&week=0` (week calendar with week tabs; event data travels only in the URL)
+- `widgets/week-view/?d=<base64url JSON>&week=0` (week calendar with week tabs; overlapping events share side-by-side lanes; a screen-reader agenda lists every event with date and time; event data travels only in the URL)
 - `widgets/grouped-bars/?labels=A,B&series=S1,S2&v0=1,2&v1=3,4&band=3-5,2-5` (grouped horizontal bars with optional target band; `anim=0` disables the grow animation)
 
 Pages source: `main` / root.

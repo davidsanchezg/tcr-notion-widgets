@@ -72,7 +72,7 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
 .track{flex:1;height:12px;background:var(--track);border-radius:4px;overflow:hidden;position:relative}
 .fill{position:relative;z-index:1;height:100%;border-radius:4px;width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
 .static .fill{transition:none}
-.band{position:absolute;top:0;bottom:0;background:rgba(15,123,108,.18);border-left:1px dashed var(--green);border-right:1px dashed var(--green)}
+.band{position:absolute;z-index:2;top:0;bottom:0;background:rgba(15,123,108,.18);border-left:1px dashed var(--green);border-right:1px dashed var(--green)}
 .n{font-size:10px;min-width:26px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
 .leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:var(--muted)}
 .leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
