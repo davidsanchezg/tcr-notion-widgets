@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="color-scheme" content="light dark"/>
+<title>Week view</title>
+<!-- theme-resolver:start (identical on every page; checked by scripts/verify-theme.sh) -->
+<script>
+(function(){
+  var root=document.documentElement;
+  var qs=new URLSearchParams(location.search);
+  var hs=new URLSearchParams(String(location.hash||'').replace(/^#/,''));
+  function param(k){var v=qs.get(k);if(v===null)v=hs.get(k);return v===null?'':String(v).toLowerCase();}
+  var lock=null, v=param('theme')||param('mode');
+  if(v==='light'||v==='dark')lock=v;
+  else if(v==='auto'||v==='system')lock='auto';
+  else{var d=param('dark');if(d==='1'||d==='true')lock='dark';else if(d==='0'||d==='false')lock='light';}
+  var locked=(lock==='light'||lock==='dark');
+  var mq=(typeof window.matchMedia==='function')?window.matchMedia('(prefers-color-scheme: dark)'):null;
+  var msgTheme=null;
+  function resolved(){
+    if(locked)return lock;
+    if(msgTheme)return msgTheme;
+    return(mq&&mq.matches)?'dark':'light';
+  }
+  function apply(){
+    var t=resolved();
+    root.dataset.theme=t;
+    root.dataset.themeMode=locked?lock:'auto';
+    root.style.colorScheme=t;
+    window.dispatchEvent(new CustomEvent('tcr-theme',{detail:t}));
+  }
+  apply();
+  if(mq){
+    var onMedia=function(){msgTheme=null;apply();};
+    if(mq.addEventListener)mq.addEventListener('change',onMedia);
+    else if(mq.addListener)mq.addListener(onMedia);
+  }
+  // Defensive: only Notion origins; ignored when the URL locks light/dark.
+  var TRUSTED=/^https:\/\/([a-z0-9-]+\.)?(notion\.so|notion\.site)$/;
+  window.addEventListener('message',function(e){
+    if(locked||!TRUSTED.test(String(e.origin)))return;
+    var d=e.data,t=null;
+    if(d&&typeof d==='object'){
+      if(d.theme==='dark'||d.theme==='light')t=d.theme;
+      else if(typeof d.darkMode==='boolean')t=d.darkMode?'dark':'light';
+    }
+    if(!t)return;
+    msgTheme=t;apply();
+  });
+})();
+</script>
+<!-- theme-resolver:end -->
+<style>
+/* theme-tokens:start */
+:root,:root[data-theme="light"]{--bg:#ffffff;--card:#f7f6f3;--line:#e9e9e7;--track:#ecebea;--ink:#37352f;--muted:#787774;color-scheme:light}
+:root[data-theme="dark"]{--bg:#191919;--card:#202020;--line:#373737;--track:#2f2f2f;--ink:#e6e6e6;--muted:#9b9b9b;color-scheme:dark}
+/* theme-tokens:end */
+:root{--blue:#2383e2;--green:#0f7b6c;--orange:#d9730d;--purple:#9065b0;--red:#e03e3e;--gold:#c8a127}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+
+#app{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ttl{font-size:13px;font-weight:650;margin-right:auto}
+.tabs{display:flex;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:2px}
+.tabs button{all:unset;cursor:pointer;font-size:11px;padding:4px 10px;border-radius:6px;color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg))}
+.tabs button:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.tabs button[aria-pressed="true"]{background:var(--bg);color:var(--ink);font-weight:600;box-shadow:0 0 0 1px var(--line)}
+.grid{display:grid;grid-template-columns:44px repeat(7,1fr);border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+.dh{font-size:11px;padding:6px 4px;text-align:center;border-left:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--card);color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg))}
+.dh b{display:block;color:var(--ink);font-size:13px}
+.dh.today b{color:var(--ink);text-decoration:underline;text-decoration-color:var(--blue);text-decoration-thickness:2px;text-underline-offset:3px}
+.gut{position:relative;border-bottom:none}
+.col{position:relative;border-left:1px solid var(--line)}
+.hr{position:absolute;left:0;right:0;border-top:1px solid var(--line);opacity:.6}
+.hl{position:absolute;right:4px;font-size:9px;color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg));transform:translateY(-50%)}
+/* Outer box has no padding/border so it always fits its lane; padding and border live on the clipped inner box. */
+.ev{position:absolute;min-width:0;padding:0;border:0;border-radius:5px;overflow:hidden;font-size:10px;line-height:1.2;color:#fff}
+.ev.ink{color:#000}
+.ev>div{height:100%;padding:2px 4px;border:1px solid rgba(0,0,0,.08);border-radius:5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ev.flag{outline:2px solid var(--gold);outline-offset:-2px}
+.ev span{display:block;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg))}
+.leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+.empty{font-size:12px;color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg));padding:20px;text-align:center}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function(){
+  // Data comes only from the URL: ?d=<base64url JSON> (no data stored in this repo).
+  // JSON: {t:title, w:["YYYY-MM-DD" Mondays], s:startHour, e:endHour, today:"YYYY-MM-DD",
+  //        c:["#hex",...], leg:[[label,colorIdx]], ev:[[date,start,end,title,colorIdx,flag,detail]]}
+  // Malformed parts are dropped; only primitives are coerced; hours must satisfy 0 <= s < e <= 24 (else 7-22).
+  // Overlapping events are laid out in side-by-side lanes; a screen-reader agenda lists every event with date and time.
+  const app=document.getElementById('app');
+  const p=new URLSearchParams(location.search);
+  const empty=()=>{app.innerHTML='<div class="empty">No data. Pass ?d=&lt;base64url JSON&gt;.</div>'};
+  let D=null;
+  try{const b=(p.get('d')||'').replace(/-/g,'+').replace(/_/g,'/');
+      D=JSON.parse(decodeURIComponent(escape(atob(b))));}catch(e){D=null}
+  if(!D||typeof D!=='object'||Array.isArray(D)||!Array.isArray(D.w)){empty();return;}
+  const str=v=>(typeof v==='string'||typeof v==='number'||typeof v==='boolean')?String(v):'';
+  const num=(v,d)=>{if(typeof v!=='number'&&!(typeof v==='string'&&v.trim()!==''))return d;const n=Number(v);return Number.isFinite(n)?n:d};
+  const ISO=s=>{if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const t=new Date(s+'T12:00:00Z');return !isNaN(t)&&t.toISOString().slice(0,10)===s};
+  const W=D.w.filter(ISO);
+  if(!W.length){empty();return;}
+  const HEX=/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i; // opaque only: 3- or 6-digit hex
+  const DEF=['#2383e2','#0f7b6c','#d9730d','#9065b0','#e03e3e','#9b9a97','#c8a127'];
+  const C=(Array.isArray(D.c)&&D.c.length)?D.c.map((c,i)=>(typeof c==='string'&&HEX.test(c))?c:DEF[i%DEF.length]):DEF;
+  // Pick black or white event text, whichever has the higher WCAG contrast with the (opaque) fill; one of them is always >= 4.58:1.
+  const lum=hx=>{let x=hx.slice(1);if(x.length===3)x=x.split('').map(c=>c+c).join('');const ch=k=>{const v=parseInt(x.substr(k,2),16)/255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};return 0.2126*ch(0)+0.7152*ch(2)+0.0722*ch(4)};
+  const ink=hx=>(lum(hx)+0.05)/(0+0.05)>(1+0.05)/(lum(hx)+0.05); // true: black text beats white
+  const col=i=>{const n=Math.trunc(num(i,0));return C[((n%C.length)+C.length)%C.length]};
+  let S=Math.floor(num(D.s,7)),E=Math.ceil(num(D.e,22));
+  if(!(S>=0&&S<E&&E<=24)){S=7;E=22;}
+  const PX=Math.max(8,Math.min(120,num(p.get('px'),num(D.px,22))));
+  const TODAY=ISO(D.today)?D.today:'';
+  const ALL=(Array.isArray(D.ev)?D.ev:[]).filter(e=>Array.isArray(e)&&ISO(e[0])&&num(e[1],NaN)>=0&&num(e[1],NaN)<num(e[2],NaN)&&num(e[2],NaN)<=24)
+    .map(e=>({d:e[0],a:num(e[1],0),z:num(e[2],0),t:str(e[3]),c:e[4],f:e[5]===true||e[5]===1,x:str(e[6])}))
+    .sort((m,n)=>m.d<n.d?-1:m.d>n.d?1:(m.a-n.a)||(m.z-n.z));
+  const LEG=Array.isArray(D.leg)?D.leg.filter(l=>Array.isArray(l)):[];
+  const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const DL=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const add=(iso,n)=>{const d=new Date(iso+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+  const fmtH=h=>{const hh=Math.floor(h),ap=hh>=12?'PM':'AM',h12=((hh+11)%12)+1;return h12+' '+ap};
+  const fmtT=h=>{let m=Math.round(h*60);if(m>=1440)return '12:00 AM (end of day)';const hh=Math.floor(m/60),mm=m%60,ap=hh>=12?'PM':'AM';return(((hh+11)%12)+1)+':'+String(mm).padStart(2,'0')+' '+ap};
+  let cur=Math.max(0,Math.min(W.length-1,Math.trunc(num(p.get('week'),0))));
+  // Lane layout on the drawn (pixel) extents, so minimum-height blocks never cover each other.
+  function lanes(list){
+    let group=[],end=-Infinity;const out=[];
+    const flush=()=>{const lane=[];group.forEach(g=>{let k=0;while(lane[k]!==undefined&&lane[k]>g.top)k++;lane[k]=g.bot;g.lane=k;});group.forEach(g=>g.n=lane.length);out.push(...group);group=[];};
+    list.forEach(g=>{if(group.length&&g.top>=end){flush();end=-Infinity;}group.push(g);end=Math.max(end,g.bot);});
+    if(group.length)flush();
+    return out;
+  }
+  function render(){
+    const w=W[cur],days=[...Array(7)].map((_,i)=>add(w,i)),H=(E-S)*PX;
+    const label=i=>{const a=new Date(W[i]+'T12:00:00Z');return 'Week of '+MN[a.getUTCMonth()]+' '+a.getUTCDate()};
+    const long=(d,i)=>{const x=new Date(d+'T12:00:00Z');return DL[i]+' '+MN[x.getUTCMonth()]+' '+x.getUTCDate()};
+    let h='<div class="top"><div class="ttl">'+esc(str(D.t))+'</div>';
+    if(W.length>1)h+='<div class="tabs" role="group" aria-label="Week">'+W.map((_,i)=>'<button type="button" data-i="'+i+'" aria-pressed="'+(i===cur)+'">'+label(i)+'</button>').join('')+'</div>';
+    h+='</div><div class="grid" aria-hidden="true"><div class="dh"></div>';
+    days.forEach((d,i)=>{const x=new Date(d+'T12:00:00Z');h+='<div class="dh'+(d===TODAY?' today':'')+'">'+DN[i]+'<b>'+MN[x.getUTCMonth()]+' '+x.getUTCDate()+'</b></div>';});
+    h+='<div class="gut" style="height:'+H+'px">';
+    for(let k=S+1;k<E;k++)h+='<div class="hl" style="top:'+((k-S)*PX)+'px">'+fmtH(k)+'</div>';
+    h+='</div>';
+    days.forEach(d=>{
+      h+='<div class="col" style="height:'+H+'px">';
+      for(let k=S+1;k<E;k++)h+='<div class="hr" style="top:'+((k-S)*PX)+'px"></div>';
+      const vis=ALL.filter(e=>e.d===d&&e.z>S&&e.a<E).map(e=>{const a=Math.max(S,e.a),z=Math.min(E,e.z),top=(a-S)*PX,ht=Math.min(H-top,Math.max(e.x?30:PX*0.9,(z-a)*PX));return{e:e,top:top,ht:ht,bot:top+ht}});
+      lanes(vis).forEach(g=>{const e=g.e,wd=100/g.n;
+        const bg=col(e.c);
+        h+='<div class="ev'+(e.f?' flag':'')+(ink(bg)?' ink':'')+'" title="'+esc(fmtT(e.a)+'–'+fmtT(e.z)+' · '+e.t+(e.x?' · '+e.x:''))+'" style="top:'+g.top+'px;height:'+g.ht+'px;left:calc('+(g.lane*wd)+'% + 1px);width:max(0px,calc('+wd+'% - 2px));background:'+bg+'"><div>'+esc(e.t)+(e.x?'<span>'+esc(e.x)+'</span>':'')+'</div></div>';
+      });
+      h+='</div>';
+    });
+    h+='</div>';
+    // Accessible agenda: every event of the selected week, with its date and full start/end time.
+    h+='<div class="sr" role="region" aria-label="'+esc((str(D.t)||'Schedule')+', '+label(cur))+'">';
+    days.forEach((d,i)=>{const evs=ALL.filter(e=>e.d===d);
+      h+='<h3>'+long(d,i)+(d===TODAY?' (today)':'')+'</h3>';
+      h+=evs.length?'<ul>'+evs.map(e=>'<li>'+fmtT(e.a)+' to '+fmtT(e.z)+': '+esc(e.t||'Untitled')+(e.x?', '+esc(e.x):'')+(e.f?' (flagged)':'')+'</li>').join('')+'</ul>':'<p>No events.</p>';
+    });
+    h+='</div>';
+    if(LEG.length)h+='<div class="leg" aria-hidden="true">'+LEG.map(l=>'<span><i style="background:'+(l[1]==='flag'?'transparent;outline:2px solid var(--gold)':col(l[1]))+'"></i>'+esc(str(l[0]))+'</span>').join('')+'</div>';
+    app.innerHTML=h;
+    app.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{cur=Number(b.dataset.i);render();const nb=app.querySelector('.tabs button[data-i="'+cur+'"]');if(nb)nb.focus();});
+  }
+  try{render();}catch(err){empty();}
+})();
+</script>
+</body>
+</html>

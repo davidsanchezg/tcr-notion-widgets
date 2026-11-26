@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="color-scheme" content="light dark"/>
+<title>Grouped bars</title>
+<!-- theme-resolver:start (identical on every page; checked by scripts/verify-theme.sh) -->
+<script>
+(function(){
+  var root=document.documentElement;
+  var qs=new URLSearchParams(location.search);
+  var hs=new URLSearchParams(String(location.hash||'').replace(/^#/,''));
+  function param(k){var v=qs.get(k);if(v===null)v=hs.get(k);return v===null?'':String(v).toLowerCase();}
+  var lock=null, v=param('theme')||param('mode');
+  if(v==='light'||v==='dark')lock=v;
+  else if(v==='auto'||v==='system')lock='auto';
+  else{var d=param('dark');if(d==='1'||d==='true')lock='dark';else if(d==='0'||d==='false')lock='light';}
+  var locked=(lock==='light'||lock==='dark');
+  var mq=(typeof window.matchMedia==='function')?window.matchMedia('(prefers-color-scheme: dark)'):null;
+  var msgTheme=null;
+  function resolved(){
+    if(locked)return lock;
+    if(msgTheme)return msgTheme;
+    return(mq&&mq.matches)?'dark':'light';
+  }
+  function apply(){
+    var t=resolved();
+    root.dataset.theme=t;
+    root.dataset.themeMode=locked?lock:'auto';
+    root.style.colorScheme=t;
+    window.dispatchEvent(new CustomEvent('tcr-theme',{detail:t}));
+  }
+  apply();
+  if(mq){
+    var onMedia=function(){msgTheme=null;apply();};
+    if(mq.addEventListener)mq.addEventListener('change',onMedia);
+    else if(mq.addListener)mq.addListener(onMedia);
+  }
+  // Defensive: only Notion origins; ignored when the URL locks light/dark.
+  var TRUSTED=/^https:\/\/([a-z0-9-]+\.)?(notion\.so|notion\.site)$/;
+  window.addEventListener('message',function(e){
+    if(locked||!TRUSTED.test(String(e.origin)))return;
+    var d=e.data,t=null;
+    if(d&&typeof d==='object'){
+      if(d.theme==='dark'||d.theme==='light')t=d.theme;
+      else if(typeof d.darkMode==='boolean')t=d.darkMode?'dark':'light';
+    }
+    if(!t)return;
+    msgTheme=t;apply();
+  });
+})();
+</script>
+<!-- theme-resolver:end -->
+<style>
+/* theme-tokens:start */
+:root,:root[data-theme="light"]{--bg:#ffffff;--card:#f7f6f3;--line:#e9e9e7;--track:#ecebea;--ink:#37352f;--muted:#787774;color-scheme:light}
+:root[data-theme="dark"]{--bg:#191919;--card:#202020;--line:#373737;--track:#2f2f2f;--ink:#e6e6e6;--muted:#9b9b9b;color-scheme:dark}
+/* theme-tokens:end */
+:root{--blue:#2383e2;--green:#0f7b6c;--orange:#d9730d;--purple:#9065b0;--red:#e03e3e;--gold:#c8a127}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+
+#app{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.ttl{font-size:13px;font-weight:650}
+.sub{font-size:11px;color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg));margin-top:-4px}
+.row{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;padding:4px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:none}
+.lab{font-size:12px;font-weight:600}
+.bars{display:flex;flex-direction:column;gap:3px}
+.b{display:flex;align-items:center;gap:6px}
+.track{flex:1;height:12px;background:var(--track);border-radius:4px;overflow:hidden;position:relative}
+.fill{position:relative;z-index:1;height:100%;border-radius:4px;width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 60%,transparent)}
+.static .fill{transition:none}
+.band{position:absolute;z-index:2;top:0;bottom:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.6) 0 2px,rgba(0,0,0,.45) 2px 4px,transparent 4px 7px);border-left:2px solid var(--ink);border-right:2px solid var(--ink);box-shadow:0 0 0 1px var(--bg)}
+.leg i.bandsw{background:repeating-linear-gradient(135deg,rgba(255,255,255,.6) 0 2px,rgba(0,0,0,.45) 2px 4px,transparent 4px 7px),var(--track);border-left:2px solid var(--ink);border-right:2px solid var(--ink)}
+.sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+.n{font-size:10px;min-width:26px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg))}
+.leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 60%,transparent)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function(){
+  // Params only: title, sub, labels=A,B, series=S1,S2, v0=1,2 v1=3,4 ..., max=N,
+  // band=lo-hi per label (e.g. band=3-5,7-7) draws a target range. colors=%23hex,...
+  // Values and bands are positional: an empty slot (v0=1,,3 or band=,3-5) means 0 / no band.
+  const p=new URLSearchParams(location.search);
+  const split=k=>(p.get(k)||'').split(',').map(s=>s.trim()).filter(s=>s!=='');
+  const splitPos=k=>{const r=p.get(k);return r===null||r===''?[]:r.split(',').map(s=>s.trim())};
+  const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const HEX=/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i; // opaque only: 3- or 6-digit hex
+  const DEF=['#9b9a97','#2383e2','#0f7b6c','#d9730d','#9065b0'];
+  const labels=split('labels'),series=split('series');
+  const C=split('colors').length?split('colors').map((c,i)=>HEX.test(c)?c:DEF[i%DEF.length]):DEF;
+  const fin=n=>Number.isFinite(n)&&n>0?n:0;
+  const V=series.map((_,i)=>splitPos('v'+i).map(s=>fin(Number(s))));
+  const bands=splitPos('band').map(s=>{const m=s.match(/^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/);if(!m)return null;const a=+m[1],b=+m[2];return Number.isFinite(a)&&Number.isFinite(b)&&b>=a?[a,b]:null});
+  const mx=Number(p.get('max'));
+  const max=(Number.isFinite(mx)&&mx>0)?mx:Math.max(1,...V.flat(),...bands.filter(Boolean).flat());
+  const pct=x=>Math.max(0,Math.min(100,x/max*100));
+  if(p.get('anim')==='0')document.documentElement.classList.add('static');
+  let h='<div aria-hidden="true">';
+  if(p.get('title'))h+='<div class="ttl">'+esc(p.get('title'))+'</div>';
+  if(p.get('sub'))h+='<div class="sub">'+esc(p.get('sub'))+'</div>';
+  labels.forEach((l,j)=>{
+    h+='<div class="row"><div class="lab">'+esc(l)+'</div><div class="bars">';
+    series.forEach((s,i)=>{const v=V[i][j]||0,bd=bands[j];
+      h+='<div class="b"><div class="track">'+(bd?'<div class="band" style="left:clamp(0px,'+pct(bd[0])+'%,calc(100% - 4px));width:max(4px,'+(pct(bd[1])-pct(bd[0]))+'%)"></div>':'')+
+         '<div class="fill" data-w="'+pct(v)+'" style="background:'+C[i%C.length]+'"></div></div><div class="n">'+v+'</div></div>';});
+    h+='</div></div>';
+  });
+  h+='<div class="leg">'+series.map((s,i)=>'<span><i style="background:'+C[i%C.length]+'"></i>'+esc(s)+'</span>').join('')+(bands.some(Boolean)?'<span><i class="bandsw"></i>'+esc(p.get('bandLabel')||'Target range')+'</span>':'')+'</div>';
+  h+='</div>';
+  // Accessible table: one row per category, one column per series, plus the target range when present.
+  const hasBand=bands.some(Boolean),bl=esc(p.get('bandLabel')||'Target range');
+  h+='<table class="sr"><caption>'+esc(p.get('title')||'Grouped bars')+(p.get('sub')?', '+esc(p.get('sub')):'')+'</caption><thead><tr><th scope="col">Category</th>'+series.map(s=>'<th scope="col">'+esc(s)+'</th>').join('')+(hasBand?'<th scope="col">'+bl+'</th>':'')+'</tr></thead><tbody>'+
+     labels.map((l,j)=>'<tr><th scope="row">'+esc(l)+'</th>'+series.map((s,i)=>'<td>'+(V[i][j]||0)+'</td>').join('')+(hasBand?'<td>'+(bands[j]?bands[j][0]+' to '+bands[j][1]:'None')+'</td>':'')+'</tr>').join('')+'</tbody></table>';
+  document.getElementById('app').innerHTML=h;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>document.querySelectorAll('.fill').forEach(f=>f.style.width=f.dataset.w+'%')));
+})();
+</script>
+</body>
+</html>

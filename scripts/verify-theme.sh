@@ -34,6 +34,8 @@ const FILES = [
   'widgets/gauge-test/index.html',
   'widgets/multi-ring/index.html',
   'widgets/controls-test/index.html',
+  'widgets/week-view/index.html',
+  'widgets/grouped-bars/index.html',
 ];
 const TRUSTED_LITERAL = '^https:\\/\\/([a-z0-9-]+\\.)?(notion\\.so|notion\\.site)$';
 const LIGHT = { '--bg': '#ffffff', '--card': '#f7f6f3', '--line': '#e9e9e7', '--track': '#ecebea', '--ink': '#37352f', '--muted': '#787774' };
