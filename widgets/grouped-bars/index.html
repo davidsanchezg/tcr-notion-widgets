@@ -108,7 +108,7 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
   labels.forEach((l,j)=>{
     h+='<div class="row"><div class="lab">'+esc(l)+'</div><div class="bars">';
     series.forEach((s,i)=>{const v=V[i][j]||0,bd=bands[j];
-      h+='<div class="b"><div class="track">'+(bd?'<div class="band" style="left:'+pct(bd[0])+'%;width:'+(pct(bd[1])-pct(bd[0]))+'%"></div>':'')+
+      h+='<div class="b"><div class="track">'+(bd?'<div class="band" style="left:clamp(0px,'+pct(bd[0])+'%,calc(100% - 4px));width:max(4px,'+(pct(bd[1])-pct(bd[0]))+'%)"></div>':'')+
          '<div class="fill" data-w="'+pct(v)+'" style="background:'+C[i%C.length]+'"></div></div><div class="n">'+v+'</div></div>';});
     h+='</div></div>';
   });
