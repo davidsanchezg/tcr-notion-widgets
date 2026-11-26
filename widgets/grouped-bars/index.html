@@ -63,21 +63,21 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
 
 #app{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .ttl{font-size:13px;font-weight:650}
-.sub{font-size:11px;color:var(--muted);margin-top:-4px}
+.sub{font-size:11px;color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg));margin-top:-4px}
 .row{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;padding:4px 0;border-top:1px solid var(--line)}
 .row:first-of-type{border-top:none}
 .lab{font-size:12px;font-weight:600}
 .bars{display:flex;flex-direction:column;gap:3px}
 .b{display:flex;align-items:center;gap:6px}
 .track{flex:1;height:12px;background:var(--track);border-radius:4px;overflow:hidden;position:relative}
-.fill{position:relative;z-index:1;height:100%;border-radius:4px;width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+.fill{position:relative;z-index:1;height:100%;border-radius:4px;width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 60%,transparent)}
 .static .fill{transition:none}
 .band{position:absolute;z-index:2;top:0;bottom:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.6) 0 2px,rgba(0,0,0,.45) 2px 4px,transparent 4px 7px);border-left:2px solid var(--ink);border-right:2px solid var(--ink);box-shadow:0 0 0 1px var(--bg)}
 .leg i.bandsw{background:repeating-linear-gradient(135deg,rgba(255,255,255,.6) 0 2px,rgba(0,0,0,.45) 2px 4px,transparent 4px 7px),var(--track);border-left:2px solid var(--ink);border-right:2px solid var(--ink)}
 .sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 .n{font-size:10px;min-width:26px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
-.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:var(--muted)}
-.leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg))}
+.leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 60%,transparent)}
 </style>
 </head>
 <body>
@@ -91,7 +91,7 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
   const split=k=>(p.get(k)||'').split(',').map(s=>s.trim()).filter(s=>s!=='');
   const splitPos=k=>{const r=p.get(k);return r===null||r===''?[]:r.split(',').map(s=>s.trim())};
   const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
-  const HEX=/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+  const HEX=/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i; // opaque only: 3- or 6-digit hex
   const DEF=['#9b9a97','#2383e2','#0f7b6c','#d9730d','#9065b0'];
   const labels=split('labels'),series=split('series');
   const C=split('colors').length?split('colors').map((c,i)=>HEX.test(c)?c:DEF[i%DEF.length]):DEF;

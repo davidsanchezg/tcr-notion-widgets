@@ -65,27 +65,27 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
 .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ttl{font-size:13px;font-weight:650;margin-right:auto}
 .tabs{display:flex;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:2px}
-.tabs button{all:unset;cursor:pointer;font-size:11px;padding:4px 10px;border-radius:6px;color:var(--muted)}
+.tabs button{all:unset;cursor:pointer;font-size:11px;padding:4px 10px;border-radius:6px;color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg))}
 .tabs button:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
 .tabs button[aria-pressed="true"]{background:var(--bg);color:var(--ink);font-weight:600;box-shadow:0 0 0 1px var(--line)}
 .grid{display:grid;grid-template-columns:44px repeat(7,1fr);border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
-.dh{font-size:11px;padding:6px 4px;text-align:center;border-left:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--card);color:var(--muted)}
+.dh{font-size:11px;padding:6px 4px;text-align:center;border-left:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--card);color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg))}
 .dh b{display:block;color:var(--ink);font-size:13px}
-.dh.today b{color:var(--blue)}
+.dh.today b{color:var(--ink);text-decoration:underline;text-decoration-color:var(--blue);text-decoration-thickness:2px;text-underline-offset:3px}
 .gut{position:relative;border-bottom:none}
 .col{position:relative;border-left:1px solid var(--line)}
 .hr{position:absolute;left:0;right:0;border-top:1px solid var(--line);opacity:.6}
-.hl{position:absolute;right:4px;font-size:9px;color:var(--muted);transform:translateY(-50%)}
+.hl{position:absolute;right:4px;font-size:9px;color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg));transform:translateY(-50%)}
 /* Outer box has no padding/border so it always fits its lane; padding and border live on the clipped inner box. */
 .ev{position:absolute;min-width:0;padding:0;border:0;border-radius:5px;overflow:hidden;font-size:10px;line-height:1.2;color:#fff}
-.ev.ink{color:#191919}
+.ev.ink{color:#000}
 .ev>div{height:100%;padding:2px 4px;border:1px solid rgba(0,0,0,.08);border-radius:5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .ev.flag{outline:2px solid var(--gold);outline-offset:-2px}
-.ev span{display:block;opacity:.9;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:var(--muted)}
+.ev span{display:block;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg))}
 .leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
-.empty{font-size:12px;color:var(--muted);padding:20px;text-align:center}
+.empty{font-size:12px;color:var(--ink);color:color-mix(in srgb,var(--ink) 80%,var(--bg));padding:20px;text-align:center}
 </style>
 </head>
 <body>
@@ -109,12 +109,12 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
   const ISO=s=>{if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const t=new Date(s+'T12:00:00Z');return !isNaN(t)&&t.toISOString().slice(0,10)===s};
   const W=D.w.filter(ISO);
   if(!W.length){empty();return;}
-  const HEX=/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+  const HEX=/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i; // opaque only: 3- or 6-digit hex
   const DEF=['#2383e2','#0f7b6c','#d9730d','#9065b0','#e03e3e','#9b9a97','#c8a127'];
   const C=(Array.isArray(D.c)&&D.c.length)?D.c.map((c,i)=>(typeof c==='string'&&HEX.test(c))?c:DEF[i%DEF.length]):DEF;
-  // Pick dark or light event text from the fill's relative luminance (WCAG), so custom colours stay readable.
-  const lum=hx=>{let x=hx.slice(1);if(x.length<6)x=x.split('').map(c=>c+c).join('');const ch=k=>{const v=parseInt(x.substr(k,2),16)/255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};return 0.2126*ch(0)+0.7152*ch(2)+0.0722*ch(4)};
-  const ink=hx=>(1.05)/(lum(hx)+0.05)<(lum(hx)+0.05)/(0.0097+0.05);
+  // Pick black or white event text, whichever has the higher WCAG contrast with the (opaque) fill; one of them is always >= 4.58:1.
+  const lum=hx=>{let x=hx.slice(1);if(x.length===3)x=x.split('').map(c=>c+c).join('');const ch=k=>{const v=parseInt(x.substr(k,2),16)/255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};return 0.2126*ch(0)+0.7152*ch(2)+0.0722*ch(4)};
+  const ink=hx=>(lum(hx)+0.05)/(0+0.05)>(1+0.05)/(lum(hx)+0.05); // true: black text beats white
   const col=i=>{const n=Math.trunc(num(i,0));return C[((n%C.length)+C.length)%C.length]};
   let S=Math.floor(num(D.s,7)),E=Math.ceil(num(D.e,22));
   if(!(S>=0&&S<E&&E<=24)){S=7;E=22;}
@@ -135,8 +135,8 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
   // Lane layout on the drawn (pixel) extents, so minimum-height blocks never cover each other.
   function lanes(list){
     let group=[],end=-Infinity;const out=[];
-    const flush=()=>{const lane=[];group.forEach(g=>{let k=0;while(lane[k]!==undefined&&lane[k]>g.top+0.5)k++;lane[k]=g.bot;g.lane=k;});group.forEach(g=>g.n=lane.length);out.push(...group);group=[];};
-    list.forEach(g=>{if(group.length&&g.top>=end-0.5){flush();end=-Infinity;}group.push(g);end=Math.max(end,g.bot);});
+    const flush=()=>{const lane=[];group.forEach(g=>{let k=0;while(lane[k]!==undefined&&lane[k]>g.top)k++;lane[k]=g.bot;g.lane=k;});group.forEach(g=>g.n=lane.length);out.push(...group);group=[];};
+    list.forEach(g=>{if(group.length&&g.top>=end){flush();end=-Infinity;}group.push(g);end=Math.max(end,g.bot);});
     if(group.length)flush();
     return out;
   }
