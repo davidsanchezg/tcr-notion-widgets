@@ -66,6 +66,7 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
 .ttl{font-size:13px;font-weight:650;margin-right:auto}
 .tabs{display:flex;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:2px}
 .tabs button{all:unset;cursor:pointer;font-size:11px;padding:4px 10px;border-radius:6px;color:var(--muted)}
+.tabs button:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
 .tabs button[aria-pressed="true"]{background:var(--bg);color:var(--ink);font-weight:600;box-shadow:0 0 0 1px var(--line)}
 .grid{display:grid;grid-template-columns:44px repeat(7,1fr);border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
 .dh{font-size:11px;padding:6px 4px;text-align:center;border-left:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--card);color:var(--muted)}
@@ -91,25 +92,39 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
   // Data comes only from the URL: ?d=<base64url JSON> (no data stored in this repo).
   // JSON: {t:title, w:["YYYY-MM-DD" Mondays], s:startHour, e:endHour, today:"YYYY-MM-DD",
   //        c:["#hex",...], leg:[[label,colorIdx]], ev:[[date,start,end,title,colorIdx,flag,detail]]}
+  // Malformed parts are dropped; hours must satisfy 0 <= s < e <= 24 (else 7-22).
   const app=document.getElementById('app');
   const p=new URLSearchParams(location.search);
+  const empty=()=>{app.innerHTML='<div class="empty">No data. Pass ?d=&lt;base64url JSON&gt;.</div>'};
   let D=null;
   try{const b=(p.get('d')||'').replace(/-/g,'+').replace(/_/g,'/');
       D=JSON.parse(decodeURIComponent(escape(atob(b))));}catch(e){D=null}
-  if(!D||!Array.isArray(D.w)||!D.w.length){app.innerHTML='<div class="empty">No data. Pass ?d=&lt;base64url JSON&gt;.</div>';return;}
-  const C=D.c||['#2383e2','#0f7b6c','#d9730d','#9065b0','#e03e3e','#9b9a97','#c8a127'];
-  const S=D.s??7,E=D.e??22,PX=Number(p.get('px')||D.px||22);
+  const ISO=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&!isNaN(new Date(s+'T12:00:00Z'))&&new Date(s+'T12:00:00Z').toISOString().slice(0,10)===s;
+  if(!D||typeof D!=='object'||!Array.isArray(D.w)){empty();return;}
+  const W=D.w.filter(ISO);
+  if(!W.length){empty();return;}
+  const HEX=/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+  const DEF=['#2383e2','#0f7b6c','#d9730d','#9065b0','#e03e3e','#9b9a97','#c8a127'];
+  const C=(Array.isArray(D.c)&&D.c.length)?D.c.map((c,i)=>HEX.test(String(c))?String(c):DEF[i%DEF.length]):DEF;
+  const col=i=>{const n=Math.trunc(Number(i))||0;return C[((n%C.length)+C.length)%C.length]};
+  const num=(v,d)=>{const n=Number(v);return(v!==null&&v!==undefined&&v!==''&&Number.isFinite(n))?n:d};
+  let S=Math.floor(num(D.s,7)),E=Math.ceil(num(D.e,22));
+  if(!(S>=0&&S<E&&E<=24)){S=7;E=22;}
+  const PX=Math.max(8,Math.min(120,num(p.get('px')||D.px,22)));
+  const EV=(Array.isArray(D.ev)?D.ev:[]).filter(e=>Array.isArray(e)&&ISO(e[0])&&Number.isFinite(Number(e[1]))&&Number.isFinite(Number(e[2]))&&Number(e[2])>Number(e[1]))
+    .map(e=>[e[0],Number(e[1]),Number(e[2]),e[3]==null?'':e[3],e[4],e[5],e[6]==null?'':e[6]]).filter(e=>e[2]>S&&e[1]<E);
+  const LEG=Array.isArray(D.leg)?D.leg.filter(l=>Array.isArray(l)):null;
   const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
   const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const add=(iso,n)=>{const d=new Date(iso+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
   const fmtH=h=>{const hh=Math.floor(h),ap=hh>=12?'PM':'AM',h12=((hh+11)%12)+1;return h12+' '+ap};
-  let cur=Math.max(0,Math.min(D.w.length-1,Number(p.get('week')||0)));
+  let cur=Math.max(0,Math.min(W.length-1,Math.trunc(Number(p.get('week')||0))||0));
   function render(){
-    const w=D.w[cur],days=[...Array(7)].map((_,i)=>add(w,i)),H=(E-S)*PX;
-    const label=i=>{const a=new Date(D.w[i]+'T12:00:00Z');return 'Week of '+MN[a.getUTCMonth()]+' '+a.getUTCDate()};
+    const w=W[cur],days=[...Array(7)].map((_,i)=>add(w,i)),H=(E-S)*PX;
+    const label=i=>{const a=new Date(W[i]+'T12:00:00Z');return 'Week of '+MN[a.getUTCMonth()]+' '+a.getUTCDate()};
     let h='<div class="top"><div class="ttl">'+esc(D.t||'')+'</div>';
-    if(D.w.length>1)h+='<div class="tabs" role="group">'+D.w.map((_,i)=>'<button data-i="'+i+'" aria-pressed="'+(i===cur)+'">'+label(i)+'</button>').join('')+'</div>';
+    if(W.length>1)h+='<div class="tabs" role="group">'+W.map((_,i)=>'<button data-i="'+i+'" aria-pressed="'+(i===cur)+'">'+label(i)+'</button>').join('')+'</div>';
     h+='</div><div class="grid"><div class="dh"></div>';
     days.forEach((d,i)=>{const x=new Date(d+'T12:00:00Z');h+='<div class="dh'+(d===D.today?' today':'')+'">'+DN[i]+'<b>'+MN[x.getUTCMonth()]+' '+x.getUTCDate()+'</b></div>';});
     h+='<div class="gut" style="height:'+H+'px">';
@@ -118,16 +133,16 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
     days.forEach(d=>{
       h+='<div class="col" style="height:'+H+'px">';
       for(let k=S+1;k<E;k++)h+='<div class="hr" style="top:'+((k-S)*PX)+'px"></div>';
-      (D.ev||[]).filter(e=>e[0]===d).forEach(e=>{
-        const top=(Math.max(S,e[1])-S)*PX,ht=Math.max(e[6]?30:PX*0.9,(Math.min(E,e[2])-Math.max(S,e[1]))*PX);
-        h+='<div class="ev'+(e[5]?' flag':'')+'" title="'+esc(e[3]+(e[6]?' · '+e[6]:''))+'" style="top:'+top+'px;height:'+ht+'px;background:'+C[(e[4]||0)%C.length]+'">'+esc(e[3])+(e[6]?'<span>'+esc(e[6])+'</span>':'')+'</div>';
+      EV.filter(e=>e[0]===d).forEach(e=>{
+        const a=Math.max(S,e[1]),z=Math.min(E,e[2]),top=(a-S)*PX,ht=Math.min(H-top,Math.max(e[6]?30:PX*0.9,(z-a)*PX));
+        h+='<div class="ev'+(e[5]?' flag':'')+'" title="'+esc(e[3]+(e[6]?' · '+e[6]:''))+'" style="top:'+top+'px;height:'+ht+'px;background:'+col(e[4])+'">'+esc(e[3])+(e[6]?'<span>'+esc(e[6])+'</span>':'')+'</div>';
       });
       h+='</div>';
     });
     h+='</div>';
-    if(D.leg)h+='<div class="leg">'+D.leg.map(l=>'<span><i style="background:'+(l[1]==='flag'?'transparent;outline:2px solid var(--gold)':C[l[1]%C.length])+'"></i>'+esc(l[0])+'</span>').join('')+'</div>';
+    if(LEG&&LEG.length)h+='<div class="leg">'+LEG.map(l=>'<span><i style="background:'+(l[1]==='flag'?'transparent;outline:2px solid var(--gold)':col(l[1]))+'"></i>'+esc(l[0]==null?'':l[0])+'</span>').join('')+'</div>';
     app.innerHTML=h;
-    app.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{cur=Number(b.dataset.i);render();});
+    app.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{cur=Number(b.dataset.i);render();const nb=app.querySelector('.tabs button[data-i="'+cur+'"]');if(nb)nb.focus();});
   }
   render();
 })();

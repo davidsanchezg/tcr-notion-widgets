@@ -84,14 +84,21 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
 (function(){
   // Params only: title, sub, labels=A,B, series=S1,S2, v0=1,2 v1=3,4 ..., max=N,
   // band=lo-hi per label (e.g. band=3-5,7-7) draws a target range. colors=%23hex,...
+  // Values and bands are positional: an empty slot (v0=1,,3 or band=,3-5) means 0 / no band.
   const p=new URLSearchParams(location.search);
   const split=k=>(p.get(k)||'').split(',').map(s=>s.trim()).filter(s=>s!=='');
+  const splitPos=k=>{const r=p.get(k);return r===null||r===''?[]:r.split(',').map(s=>s.trim())};
   const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const HEX=/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+  const DEF=['#9b9a97','#2383e2','#0f7b6c','#d9730d','#9065b0'];
   const labels=split('labels'),series=split('series');
-  const C=split('colors').length?split('colors'):['#9b9a97','#2383e2','#0f7b6c','#d9730d','#9065b0'];
-  const V=series.map((_,i)=>split('v'+i).map(Number));
-  const bands=split('band').map(s=>{const m=s.match(/^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/);return m?[+m[1],+m[2]]:null});
-  const max=Number(p.get('max'))||Math.max(1,...V.flat(),...bands.filter(Boolean).flat());
+  const C=split('colors').length?split('colors').map((c,i)=>HEX.test(c)?c:DEF[i%DEF.length]):DEF;
+  const fin=n=>Number.isFinite(n)&&n>0?n:0;
+  const V=series.map((_,i)=>splitPos('v'+i).map(s=>fin(Number(s))));
+  const bands=splitPos('band').map(s=>{const m=s.match(/^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/);if(!m)return null;const a=+m[1],b=+m[2];return Number.isFinite(a)&&Number.isFinite(b)&&b>=a?[a,b]:null});
+  const mx=Number(p.get('max'));
+  const max=(Number.isFinite(mx)&&mx>0)?mx:Math.max(1,...V.flat(),...bands.filter(Boolean).flat());
+  const pct=x=>Math.max(0,Math.min(100,x/max*100));
   if(p.get('anim')==='0')document.documentElement.classList.add('static');
   let h='';
   if(p.get('title'))h+='<div class="ttl">'+esc(p.get('title'))+'</div>';
@@ -99,8 +106,8 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-ser
   labels.forEach((l,j)=>{
     h+='<div class="row"><div class="lab">'+esc(l)+'</div><div class="bars">';
     series.forEach((s,i)=>{const v=V[i][j]||0,bd=bands[j];
-      h+='<div class="b"><div class="track">'+(bd?'<div class="band" style="left:'+(bd[0]/max*100)+'%;width:'+((bd[1]-bd[0])/max*100)+'%"></div>':'')+
-         '<div class="fill" data-w="'+(v/max*100)+'" style="background:'+C[i%C.length]+'"></div></div><div class="n">'+v+'</div></div>';});
+      h+='<div class="b"><div class="track">'+(bd?'<div class="band" style="left:'+pct(bd[0])+'%;width:'+(pct(bd[1])-pct(bd[0]))+'%"></div>':'')+
+         '<div class="fill" data-w="'+pct(v)+'" style="background:'+C[i%C.length]+'"></div></div><div class="n">'+v+'</div></div>';});
     h+='</div></div>';
   });
   h+='<div class="leg">'+series.map((s,i)=>'<span><i style="background:'+C[i%C.length]+'"></i>'+esc(s)+'</span>').join('')+(bands.some(Boolean)?'<span><i style="background:rgba(15,123,108,.3);outline:1px dashed var(--green)"></i>'+esc(p.get('bandLabel')||'Target range')+'</span>':'')+'</div>';
